@@ -110,7 +110,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ item, type, onClose, onR
           <div style={{ display: "flex", gap: "8px" }}>
             <input
               type="email"
-              placeholder="e.g. bob@skybox.io"
+              placeholder="e.g. ravi@skybox.io"
               className="input-field"
               value={email}
               onChange={(e) => setEmail(e.target.value)}

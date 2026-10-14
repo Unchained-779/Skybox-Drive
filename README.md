@@ -156,10 +156,10 @@ If you run `npm run seed` in the `server` directory, two accounts are pre-popula
 
 | User | Email | Password | Role / Pre-populated Data |
 | :--- | :--- | :--- | :--- |
-| **Alice Walker** | `alice@skybox.io` | `password123` | Drive Owner: Pre-populated with `Documents`, `Work Projects`, multi-version `Project_Proposal.md`, and shared folder with Bob. |
-| **Bob Stone** | `bob@skybox.io` | `password123` | Collaborator: Has `editor` access to Alice's `Work Projects` folder and owns private vault notes. |
+| **Vivek Chandra** | `vivek@skybox.io` | `password123` | Drive Owner: Pre-populated with `Documents`, `Work Projects`, multi-version `Project_Proposal.md`, and shared folder with Ravi. |
+| **Ravi Chandra** | `ravi@skybox.io` | `password123` | Collaborator: Has `editor` access to Vivek's `Work Projects` folder and owns private vault notes. |
 
-The React frontend includes **"One-Click Demo Login"** buttons for Alice and Bob on the login screen for instant evaluator testing.
+The React frontend includes **"One-Click Demo Login"** buttons for Vivek Chandra and Ravi Chandra on the login screen for instant evaluator testing.
 
 ---
 
@@ -191,14 +191,14 @@ Below are sample `curl` commands for the primary user flows:
 ```bash
 curl -X POST http://localhost:5000/api/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"name": "Alice Walker", "email": "alice@skybox.io", "password": "password123"}'
+  -d '{"name": "Vivek Chandra", "email": "vivek@skybox.io", "password": "password123"}'
 ```
 
 ### 2. Login
 ```bash
 curl -X POST http://localhost:5000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "alice@skybox.io", "password": "password123"}'
+  -d '{"email": "vivek@skybox.io", "password": "password123"}'
 ```
 
 ### 3. Create a Folder
@@ -243,7 +243,7 @@ curl -X GET http://localhost:5000/api/files/<FILE_ID>/download \
 curl -X POST http://localhost:5000/api/shares \
   -H "Authorization: Bearer <TOKEN>" \
   -H "Content-Type: application/json" \
-  -d '{"resourceType": "file", "resourceId": "<FILE_ID>", "targetEmail": "bob@skybox.io", "role": "editor"}'
+  -d '{"resourceType": "file", "resourceId": "<FILE_ID>", "targetEmail": "ravi@skybox.io", "role": "editor"}'
 ```
 
 ### 9. Generate Public Shareable Link

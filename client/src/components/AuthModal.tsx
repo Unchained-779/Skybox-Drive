@@ -177,7 +177,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
             </div>
 
             <button
-              onClick={() => handleDemoLogin("alice@skybox.io")}
+              onClick={() => handleDemoLogin("vivek@skybox.io")}
               className="btn btn-secondary"
               style={{
                 padding: "14px",
@@ -189,15 +189,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <Sparkles size={18} color="var(--accent-blue)" />
                 <div style={{ textAlign: "left" }}>
-                  <p style={{ fontSize: "14px", fontWeight: 600 }}>Login as Alice Walker</p>
-                  <p style={{ fontSize: "12px", color: "var(--text-muted)" }}>alice@skybox.io (Drive Owner)</p>
+                  <p style={{ fontSize: "14px", fontWeight: 600 }}>Login as Vivek Chandra</p>
+                  <p style={{ fontSize: "12px", color: "var(--text-muted)" }}>vivek@skybox.io (Drive Owner)</p>
                 </div>
               </div>
-              <span className="badge badge-blue">Admin</span>
+              <span className="badge badge-blue">Owner</span>
             </button>
 
             <button
-              onClick={() => handleDemoLogin("bob@skybox.io")}
+              onClick={() => handleDemoLogin("ravi@skybox.io")}
               className="btn btn-secondary"
               style={{
                 padding: "14px",
@@ -209,8 +209,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <Sparkles size={18} color="var(--accent-green)" />
                 <div style={{ textAlign: "left" }}>
-                  <p style={{ fontSize: "14px", fontWeight: 600 }}>Login as Bob Stone</p>
-                  <p style={{ fontSize: "12px", color: "var(--text-muted)" }}>bob@skybox.io (Editor Partner)</p>
+                  <p style={{ fontSize: "14px", fontWeight: 600 }}>Login as Ravi Chandra</p>
+                  <p style={{ fontSize: "12px", color: "var(--text-muted)" }}>ravi@skybox.io (Collaborator)</p>
                 </div>
               </div>
               <span className="badge badge-green">Editor</span>
