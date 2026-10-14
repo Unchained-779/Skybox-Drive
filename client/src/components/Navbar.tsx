@@ -1,0 +1,84 @@
+import React from "react";
+import { Search, LogOut, User as UserIcon } from "lucide-react";
+import { User } from "../types";
+
+interface NavbarProps {
+  user: User | null;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
+  onLogout: () => void;
+}
+
+export const Navbar: React.FC<NavbarProps> = ({
+  user,
+  searchQuery,
+  onSearchChange,
+  onLogout
+}) => {
+  return (
+    <header className="topbar">
+      {/* Search Input */}
+      <div style={{ position: "relative", width: "420px", maxWidth: "100%" }}>
+        <Search
+          size={18}
+          color="var(--text-muted)"
+          style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)" }}
+        />
+        <input
+          type="text"
+          placeholder="Search in Drive (files, folders)..."
+          className="input-field"
+          style={{
+            paddingLeft: "42px",
+            backgroundColor: "rgba(20, 30, 51, 0.6)",
+            borderRadius: "9999px"
+          }}
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+        />
+      </div>
+
+      {/* User Info & Actions */}
+      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        {user ? (
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div
+              style={{
+                width: "36px",
+                height: "36px",
+                borderRadius: "50%",
+                backgroundColor: "var(--accent-blue)",
+                color: "#ffffff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 700,
+                fontSize: "14px",
+                boxShadow: "0 2px 8px rgba(59, 130, 246, 0.4)"
+              }}
+            >
+              {user.name.charAt(0).toUpperCase()}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span style={{ fontSize: "14px", fontWeight: 600 }}>{user.name}</span>
+              <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{user.email}</span>
+            </div>
+            <button
+              onClick={onLogout}
+              className="btn btn-secondary"
+              style={{ padding: "8px 12px", marginLeft: "8px" }}
+              title="Log out"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <UserIcon size={18} color="var(--text-muted)" />
+            <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Not logged in</span>
+          </div>
+        )}
+      </div>
+    </header>
+  );
+};

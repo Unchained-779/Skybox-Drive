@@ -1,0 +1,480 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Skybox Drive API",
+    "version": "1.0.0",
+    "description": "Production-grade Google Drive clone backend with versioning, RBAC, atomic quota reservation, and IDOR protection.",
+    "contact": {
+      "name": "Vivek Chandra",
+      "email": "vivek@skybox.io"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000",
+      "description": "Local development server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "name": { "type": "string" },
+          "storageQuota": { "type": "integer" },
+          "usedStorage": { "type": "integer" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Folder": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "name": { "type": "string" },
+          "parentId": { "type": "string", "nullable": true },
+          "ownerId": { "type": "string" },
+          "ancestors": { "type": "array", "items": { "type": "string" } },
+          "isTrash": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "File": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "name": { "type": "string" },
+          "folderId": { "type": "string", "nullable": true },
+          "ownerId": { "type": "string" },
+          "size": { "type": "integer" },
+          "mimeType": { "type": "string" },
+          "storageKey": { "type": "string" },
+          "checksum": { "type": "string" },
+          "currentVersion": { "type": "integer" },
+          "versions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "versionNumber": { "type": "integer" },
+                "size": { "type": "integer" },
+                "checksum": { "type": "string" },
+                "createdAt": { "type": "string", "format": "date-time" }
+              }
+            }
+          }
+        }
+      },
+      "StorageStats": {
+        "type": "object",
+        "properties": {
+          "storageQuota": { "type": "integer" },
+          "usedStorage": { "type": "integer" },
+          "remainingStorage": { "type": "integer" },
+          "percentageUsed": { "type": "number" },
+          "breakdown": {
+            "type": "object",
+            "properties": {
+              "documents": { "type": "object", "properties": { "bytes": { "type": "integer" }, "count": { "type": "integer" } } },
+              "images": { "type": "object", "properties": { "bytes": { "type": "integer" }, "count": { "type": "integer" } } },
+              "videos": { "type": "object", "properties": { "bytes": { "type": "integer" }, "count": { "type": "integer" } } },
+              "audio": { "type": "object", "properties": { "bytes": { "type": "integer" }, "count": { "type": "integer" } } },
+              "others": { "type": "object", "properties": { "bytes": { "type": "integer" }, "count": { "type": "integer" } } }
+            }
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/auth/register": {
+      "post": {
+        "summary": "Register a new user",
+        "tags": ["Authentication"],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password", "name"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "minLength": 6 },
+                  "name": { "type": "string", "minLength": 2 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "User successfully created" },
+          "409": { "description": "User already exists" }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Log in and obtain JWT token",
+        "tags": ["Authentication"],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Login successful" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "summary": "Get authenticated user profile",
+        "tags": ["Authentication"],
+        "responses": {
+          "200": { "description": "Current user profile" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/users/me/storage-stats": {
+      "get": {
+        "summary": "Get storage quota usage and category breakdown",
+        "tags": ["User"],
+        "responses": {
+          "200": { "description": "Storage statistics returned" }
+        }
+      }
+    },
+    "/api/users/search": {
+      "get": {
+        "summary": "Search registered users by email or name",
+        "tags": ["User"],
+        "parameters": [
+          { "name": "q", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Matching users" }
+        }
+      }
+    },
+    "/api/folders": {
+      "post": {
+        "summary": "Create a new folder",
+        "tags": ["Folders"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "parentId": { "type": "string", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Folder created" }
+        }
+      },
+      "get": {
+        "summary": "List folder contents with pagination and search",
+        "tags": ["Folders"],
+        "parameters": [
+          { "name": "folderId", "in": "query", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Folder contents retrieved" }
+        }
+      }
+    },
+    "/api/folders/{id}/rename": {
+      "patch": {
+        "summary": "Rename folder",
+        "tags": ["Folders"],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["newName"],
+                "properties": { "newName": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Folder renamed" } }
+      }
+    },
+    "/api/folders/{id}/move": {
+      "patch": {
+        "summary": "Move folder to another directory",
+        "tags": ["Folders"],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["targetParentId"],
+                "properties": { "targetParentId": { "type": "string", "nullable": true } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Folder moved" } }
+      }
+    },
+    "/api/folders/{id}": {
+      "delete": {
+        "summary": "Soft-delete or permanently purge folder",
+        "tags": ["Folders"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "permanent", "in": "query", "schema": { "type": "boolean" } }
+        ],
+        "responses": { "200": { "description": "Folder deleted" } }
+      }
+    },
+    "/api/files/upload": {
+      "post": {
+        "summary": "Upload a file with atomic quota check",
+        "tags": ["Files"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": { "type": "string", "format": "binary" },
+                  "folderId": { "type": "string", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "File uploaded" },
+          "413": { "description": "Storage quota exceeded" }
+        }
+      }
+    },
+    "/api/files/{id}/download": {
+      "get": {
+        "summary": "Stream download file or specific version (supports HTTP 206 Range)",
+        "tags": ["Files"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "version", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "File stream" },
+          "206": { "description": "Partial content stream" }
+        }
+      }
+    },
+    "/api/files/{id}/versions": {
+      "post": {
+        "summary": "Upload a new version of an existing file",
+        "tags": ["Files"],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "New version uploaded" } }
+      }
+    },
+    "/api/files/{id}/versions/{version}/restore": {
+      "post": {
+        "summary": "Restore an older version as active head version",
+        "tags": ["Files"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "version", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": { "200": { "description": "Version restored" } }
+      }
+    },
+    "/api/files/{id}": {
+      "delete": {
+        "summary": "Soft-delete or permanently purge file",
+        "tags": ["Files"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "permanent", "in": "query", "schema": { "type": "boolean" } }
+        ],
+        "responses": { "200": { "description": "File deleted" } }
+      }
+    },
+    "/api/shares": {
+      "post": {
+        "summary": "Share file or folder with registered user",
+        "tags": ["Sharing"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["resourceType", "resourceId", "targetEmail", "role"],
+                "properties": {
+                  "resourceType": { "type": "string", "enum": ["file", "folder"] },
+                  "resourceId": { "type": "string" },
+                  "targetEmail": { "type": "string", "format": "email" },
+                  "role": { "type": "string", "enum": ["viewer", "editor"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Resource shared" } }
+      },
+      "delete": {
+        "summary": "Revoke sharing permission",
+        "tags": ["Sharing"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["resourceType", "resourceId", "targetUserId"],
+                "properties": {
+                  "resourceType": { "type": "string", "enum": ["file", "folder"] },
+                  "resourceId": { "type": "string" },
+                  "targetUserId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Share revoked" } }
+      }
+    },
+    "/api/shares/link": {
+      "post": {
+        "summary": "Create a public shareable link",
+        "tags": ["Sharing"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["resourceType", "resourceId"],
+                "properties": {
+                  "resourceType": { "type": "string", "enum": ["file", "folder"] },
+                  "resourceId": { "type": "string" },
+                  "role": { "type": "string", "enum": ["viewer", "editor"] },
+                  "expiresInHours": { "type": "number" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Share link generated" } }
+      }
+    },
+    "/api/shares/link/{token}": {
+      "get": {
+        "summary": "Access resource via public token",
+        "tags": ["Sharing"],
+        "security": [],
+        "parameters": [{ "name": "token", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Shared resource accessed" } }
+      }
+    },
+    "/api/shares/shared-with-me": {
+      "get": {
+        "summary": "List files and folders shared with the authenticated user",
+        "tags": ["Sharing"],
+        "responses": { "200": { "description": "Shared items list" } }
+      }
+    },
+    "/api/trash": {
+      "get": {
+        "summary": "List all soft-deleted files and folders",
+        "tags": ["Trash"],
+        "responses": { "200": { "description": "Trash contents" } }
+      }
+    },
+    "/api/trash/restore": {
+      "post": {
+        "summary": "Restore a file or folder from trash",
+        "tags": ["Trash"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["resourceType", "resourceId"],
+                "properties": {
+                  "resourceType": { "type": "string", "enum": ["file", "folder"] },
+                  "resourceId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Resource restored" } }
+      }
+    },
+    "/api/trash/empty": {
+      "delete": {
+        "summary": "Permanently purge all items in trash and reclaim user quota",
+        "tags": ["Trash"],
+        "responses": { "200": { "description": "Trash emptied and quota reclaimed" } }
+      }
+    }
+  }
+}
