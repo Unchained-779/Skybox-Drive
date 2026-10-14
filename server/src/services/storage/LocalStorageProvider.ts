@@ -10,7 +10,7 @@ export class LocalStorageProvider implements IStorageProvider {
   private readonly storageDir: string;
 
   constructor(customStorageDir?: string) {
-    this.storageDir = customStorageDir || env.STORAGE_LOCAL_PATH;
+    this.storageDir = path.resolve(customStorageDir || env.STORAGE_LOCAL_PATH);
     this.ensureDirectoryExists(this.storageDir);
   }
 
@@ -27,6 +27,7 @@ export class LocalStorageProvider implements IStorageProvider {
   }
 
   public async saveFile(tempFilePath: string, customKey?: string): Promise<SaveFileResult> {
+    this.ensureDirectoryExists(this.storageDir);
     const key = customKey || uuidv4();
     const destinationPath = this.getSafeFilePath(key);
 

@@ -28,10 +28,16 @@ export const setupTestDB = () => {
     const testStorage = path.resolve(__dirname, "../storage_data");
     const testTemp = path.resolve(__dirname, "../storage_temp");
     if (fs.existsSync(testStorage)) {
-      fs.rmSync(testStorage, { recursive: true, force: true });
+      const files = fs.readdirSync(testStorage);
+      for (const file of files) {
+        fs.unlinkSync(path.join(testStorage, file));
+      }
     }
     if (fs.existsSync(testTemp)) {
-      fs.rmSync(testTemp, { recursive: true, force: true });
+      const files = fs.readdirSync(testTemp);
+      for (const file of files) {
+        fs.unlinkSync(path.join(testTemp, file));
+      }
     }
   });
 };
