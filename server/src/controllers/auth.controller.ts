@@ -18,6 +18,12 @@ export const loginSchema = z.object({
   })
 });
 
+export const googleAuthSchema = z.object({
+  body: z.object({
+    credential: z.string().min(1, "Google credential token is required")
+  })
+});
+
 export class AuthController {
   public static async register(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -38,6 +44,19 @@ export class AuthController {
       res.status(200).json({
         success: true,
         message: "Login successful",
+        data: result
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public static async googleAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await AuthService.loginWithGoogle(req.body.credential, req.ip);
+      res.status(200).json({
+        success: true,
+        message: "Google authentication successful",
         data: result
       });
     } catch (error) {

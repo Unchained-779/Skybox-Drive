@@ -38,7 +38,10 @@ export const createApp = (): Application => {
   app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
   // Swagger Documentation endpoint
-  const swaggerDocumentPath = path.resolve(__dirname, "./docs/swagger.json");
+  let swaggerDocumentPath = path.resolve(__dirname, "./docs/swagger.json");
+  if (!fs.existsSync(swaggerDocumentPath)) {
+    swaggerDocumentPath = path.resolve(__dirname, "../src/docs/swagger.json");
+  }
   if (fs.existsSync(swaggerDocumentPath)) {
     const swaggerDoc = JSON.parse(fs.readFileSync(swaggerDocumentPath, "utf-8"));
     app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDoc));
@@ -55,6 +58,18 @@ export const createApp = (): Application => {
 
   // Mount API Routes
   app.use("/api", apiRoutes);
+
+  // Serve Frontend client build in production if available
+  const clientDistPath = path.resolve(__dirname, "../../client/dist");
+  if (fs.existsSync(clientDistPath)) {
+    app.use(express.static(clientDistPath));
+    app.get("*", (req: Request, res: Response, next) => {
+      if (req.path.startsWith("/api") || req.path.startsWith("/health") || req.path.startsWith("/api-docs")) {
+        return next();
+      }
+      res.sendFile(path.join(clientDistPath, "index.html"));
+    });
+  }
 
   // Global Error Handler
   app.use(errorHandler);

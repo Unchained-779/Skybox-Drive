@@ -2,6 +2,8 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  avatar?: string;
+  authProvider?: "local" | "google";
   storageQuota: number;
   usedStorage: number;
 }

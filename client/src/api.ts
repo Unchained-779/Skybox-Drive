@@ -6,7 +6,7 @@ import {
   FileItem
 } from "./types";
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000/api";
 
 export const getAuthToken = (): string | null => {
   return localStorage.getItem("skybox_token");
@@ -59,6 +59,15 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, email, password })
+    });
+    return handleResponse(res);
+  },
+
+  async loginWithGoogle(credential: string): Promise<{ user: User; token: string }> {
+    const res = await fetch(`${API_BASE}/auth/google`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ credential })
     });
     return handleResponse(res);
   },

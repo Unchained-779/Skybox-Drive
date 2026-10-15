@@ -4,8 +4,11 @@ import { env } from "../config/env";
 
 export interface IUser extends Document {
   email: string;
-  password: string;
+  password?: string;
   name: string;
+  googleId?: string;
+  avatar?: string;
+  authProvider: "local" | "google";
   storageQuota: number;
   usedStorage: number;
   createdAt: Date;
@@ -25,13 +28,27 @@ const userSchema = new Schema<IUser>(
     },
     password: {
       type: String,
-      required: true,
+      required: false,
       minlength: 6
     },
     name: {
       type: String,
       required: true,
       trim: true
+    },
+    googleId: {
+      type: String,
+      default: null,
+      index: true
+    },
+    avatar: {
+      type: String,
+      default: null
+    },
+    authProvider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local"
     },
     storageQuota: {
       type: Number,
@@ -55,7 +72,7 @@ const userSchema = new Schema<IUser>(
 );
 
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) {
+  if (!this.password || !this.isModified("password")) {
     return next();
   }
   try {
@@ -68,6 +85,7 @@ userSchema.pre("save", async function (next) {
 });
 
 userSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
+  if (!this.password) return false;
   return bcrypt.compare(candidatePassword, this.password);
 };
 

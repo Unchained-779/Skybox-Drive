@@ -153,6 +153,31 @@
         }
       }
     },
+    "/api/auth/google": {
+      "post": {
+        "summary": "Authenticate or register user via Google OAuth ID token",
+        "tags": ["Authentication"],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["credential"],
+                "properties": {
+                  "credential": { "type": "string", "description": "Google ID Token JWT" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Google login or registration successful" },
+          "401": { "description": "Invalid Google token" }
+        }
+      }
+    },
     "/api/auth/me": {
       "get": {
         "summary": "Get authenticated user profile",

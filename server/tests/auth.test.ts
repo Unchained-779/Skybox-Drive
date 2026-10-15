@@ -59,4 +59,31 @@ describe("Authentication & User API", () => {
     const res = await request(app).get("/api/auth/me");
     expect(res.status).toBe(401);
   });
+
+  it("should register and login user via Google OAuth ID token", async () => {
+    // Generate base64 mock Google ID token payload
+    const mockPayload = Buffer.from(
+      JSON.stringify({
+        email: "googledev@gmail.com",
+        name: "Google Developer",
+        sub: "google-sub-987654",
+        picture: "https://lh3.googleusercontent.com/a/sample"
+      })
+    ).toString("base64");
+    const mockGoogleToken = `header.${mockPayload}.signature`;
+
+    // 1. Initial Google sign up
+    const res1 = await request(app).post("/api/auth/google").send({ credential: mockGoogleToken });
+    expect(res1.status).toBe(200);
+    expect(res1.body.success).toBe(true);
+    expect(res1.body.data.user.email).toBe("googledev@gmail.com");
+    expect(res1.body.data.user.name).toBe("Google Developer");
+    expect(res1.body.data.user.storageQuota).toBe(104857600);
+    expect(res1.body.data.token).toBeDefined();
+
+    // 2. Subsequent Google login for existing user
+    const res2 = await request(app).post("/api/auth/google").send({ credential: mockGoogleToken });
+    expect(res2.status).toBe(200);
+    expect(res2.body.data.user.id).toBe(res1.body.data.user.id);
+  });
 });

@@ -1,0 +1,25 @@
+{
+  "name": "skybox-drive",
+  "version": "1.0.0",
+  "description": "Production Cloud File Storage & Collaboration System (Google Drive Clone)",
+  "scripts": {
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "build:server": "npm run build --prefix server",
+    "build:client": "npm run build --prefix client",
+    "build": "npm run build --prefix server && npm run build --prefix client",
+    "start": "node server/dist/server.js",
+    "test": "npm test --prefix server",
+    "seed": "npm run seed --prefix server"
+  },
+  "keywords": [
+    "cloud-storage",
+    "google-drive",
+    "fullstack",
+    "typescript",
+    "react",
+    "express",
+    "mongodb"
+  ],
+  "author": "Vivek Chandra",
+  "license": "ISC"
+}

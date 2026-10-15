@@ -54,13 +54,43 @@ export const Navbar: React.FC<NavbarProps> = ({
                 justifyContent: "center",
                 fontWeight: 700,
                 fontSize: "14px",
-                boxShadow: "0 2px 8px rgba(59, 130, 246, 0.4)"
+                boxShadow: "0 2px 8px rgba(59, 130, 246, 0.4)",
+                overflow: "hidden",
+                border: user.avatar ? "2px solid rgba(59, 130, 246, 0.6)" : "none"
               }}
             >
-              {user.name.charAt(0).toUpperCase()}
+              {user.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={user.name}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  onError={(e) => {
+                    // Fallback to initial if image URL fails to load
+                    (e.target as HTMLElement).style.display = "none";
+                  }}
+                />
+              ) : (
+                user.name.charAt(0).toUpperCase()
+              )}
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <span style={{ fontSize: "14px", fontWeight: 600 }}>{user.name}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ fontSize: "14px", fontWeight: 600 }}>{user.name}</span>
+                {user.authProvider === "google" && (
+                  <span
+                    style={{
+                      fontSize: "10px",
+                      padding: "1px 6px",
+                      borderRadius: "10px",
+                      backgroundColor: "rgba(59, 130, 246, 0.2)",
+                      color: "#60a5fa",
+                      fontWeight: 600
+                    }}
+                  >
+                    Google
+                  </span>
+                )}
+              </div>
               <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{user.email}</span>
             </div>
             <button

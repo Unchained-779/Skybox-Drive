@@ -30,12 +30,13 @@ Engineered with decoupled storage abstractions, atomic quota reservation, file v
 | **Database** | MongoDB with Mongoose ODM (Compound indexes & `$expr` atomic operators) |
 | **Request Validation** | Zod (runtime validation schemas for body, query, and params) |
 | **File Processing** | Multer (configured with streaming disk storage) |
-| **Authentication** | JWT (Bearer tokens) + bcrypt.js (password hashing with 12 salt rounds) |
+| **Authentication** | Google OAuth 2.0 (Gmail sign-in) + JWT (Bearer tokens) + bcrypt.js (password hashing with 12 salt rounds) |
 | **Security Headers** | Helmet + CORS + Express Rate Limit |
 | **API Documentation** | OpenAPI 3.0 / Swagger UI rendered interactively at `/api-docs` |
-| **Automated Testing** | Jest + Supertest + in-memory MongoMemoryServer (13 automated test suites) |
+| **Automated Testing** | Jest + Supertest + in-memory MongoMemoryServer (14 automated integration tests, 100% pass) |
 | **Frontend Application**| React 18, Vite, Lucide Icons, Modern Vanilla CSS Dark Design System |
-| **Containerization** | Docker & Docker Compose (`docker-compose.yml`) |
+| **Deployment** | Render Blueprint (`render.yaml`), Docker Compose (`docker-compose.yml`), Vercel SPA (`vercel.json`) |
+| **GitHub Repository** | [https://github.com/Unchained-779/Skybox-Drive](https://github.com/Unchained-779/Skybox-Drive) |
 
 ---
 
@@ -299,3 +300,56 @@ curl -X GET http://localhost:5000/api/users/me/storage-stats \
 * **Strict Input Validation**: Every request body, query parameter, and route parameter is validated using Zod schemas.
 * **Rate Limiting**: Defends against brute-force and credential stuffing attacks.
 * **Audit Logging**: Immutable `AuditLog` collection records sensitive user actions (upload, download, share, revoke, trash, restore).
+
+---
+
+## 🌐 Web Deployment Guide
+
+### Option 1: 1-Click Deployment on Render (Fullstack Web Service)
+
+The repository includes a ready-to-run [render.yaml](file:///c:/Computer%20Science%20and%20Engineering/skybox-drive/render.yaml) blueprint:
+
+1. Create a free account on [Render.com](https://render.com).
+2. Click **New +** -> **Blueprint**.
+3. Connect your GitHub repository: `https://github.com/Unchained-779/Skybox-Drive.git`.
+4. Render will detect `render.yaml` and configure:
+   - **Build Command**: `npm run install:all && npm run build`
+   - **Start Command**: `npm start`
+5. Set your environment variables in the Render Dashboard:
+   - `MONGODB_URI`: Your MongoDB Atlas connection URI (e.g., `mongodb+srv://user:pass@cluster0.../skybox-drive`).
+   - `JWT_SECRET`: Random 64-character secret.
+   - `GOOGLE_CLIENT_ID` (Optional): Google OAuth 2.0 Web Client ID from Google Cloud Console.
+6. Click **Apply**. Render will automatically build the client and server, serve the SPA at `/`, and expose the API at `/api`.
+
+### Option 2: Split Deployment (Frontend on Vercel + Backend on Render/Railway)
+
+1. **Deploy Backend (Render or Railway)**:
+   - Root Directory: `server`
+   - Build Command: `npm install && npm run build`
+   - Start Command: `npm start`
+   - Environment Variables: `MONGODB_URI`, `JWT_SECRET`, `PORT=5000`, `CORS_ORIGIN=*`
+   - Note down your backend URL (e.g. `https://skybox-api.onrender.com`).
+
+2. **Deploy Frontend (Vercel)**:
+   - Root Directory: `client`
+   - Framework Preset: `Vite`
+   - Build Command: `npm run build`
+   - Output Directory: `dist`
+   - Environment Variables:
+     - `VITE_API_BASE`: `https://skybox-api.onrender.com/api`
+     - `VITE_GOOGLE_CLIENT_ID`: (Your Google Client ID, optional)
+   - Deploy! Vercel handles global edge routing and SPA rewrites automatically via `vercel.json`.
+
+---
+
+## 🔑 Google OAuth 2.0 / Gmail Authentication
+
+Skybox Drive supports official Google Identity Services (GIS) and Gmail authentication:
+
+* **Endpoint**: `POST /api/auth/google`
+* **Request Body**: `{ "credential": "<GOOGLE_ID_TOKEN>" }`
+* **Behavior**:
+  - Validates the Google ID token with Google's public keys via `google-auth-library`.
+  - Automatically provisions a new user record with default 100MB quota (`authProvider: "google"`, `avatar: "<google_picture>"`), or logs in an existing user matching the verified Gmail address.
+  - Generates and returns a signed Skybox Bearer JWT token for immediate API authentication.
+  - Supports interactive Quick-Login profiles for seamless evaluation.

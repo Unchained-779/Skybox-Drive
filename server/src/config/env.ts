@@ -14,7 +14,8 @@ const envSchema = z.object({
   STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
   STORAGE_LOCAL_PATH: z.string().default(path.resolve(__dirname, "../../storage_data")),
   DEFAULT_USER_QUOTA: z.string().default("104857600").transform((val) => parseInt(val, 10)), // 100 MB default
-  CORS_ORIGIN: z.string().default("*")
+  CORS_ORIGIN: z.string().default("*"),
+  GOOGLE_CLIENT_ID: z.string().optional()
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
