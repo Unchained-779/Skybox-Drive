@@ -101,20 +101,53 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
     loadDemoProfiles();
   }, [loadDemoProfiles]);
 
-  // Initialize native Google Identity Services if client ID is configured
+  const GOOGLE_CLIENT_ID =
+    import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+    "547814438680-q5ovo59fntrb2apk8f0v73l0ic3d7mmm.apps.googleusercontent.com";
+
+  // Initialize native Google Identity Services with official Google Client ID
   useEffect(() => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (clientId && window.google?.accounts?.id) {
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: async (res: { credential: string }) => {
-          if (res.credential) {
-            handleGoogleTokenLogin(res.credential);
+    const initGsi = () => {
+      if (window.google?.accounts?.id) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: async (res: { credential: string }) => {
+              if (res.credential) {
+                handleGoogleTokenLogin(res.credential);
+              }
+            }
+          });
+
+          const loginEl = document.getElementById("native-google-btn-login");
+          if (loginEl) {
+            window.google.accounts.id.renderButton(loginEl, {
+              theme: "outline",
+              size: "large",
+              width: 380,
+              text: "signin_with"
+            });
           }
+
+          const regEl = document.getElementById("native-google-btn-register");
+          if (regEl) {
+            window.google.accounts.id.renderButton(regEl, {
+              theme: "outline",
+              size: "large",
+              width: 380,
+              text: "signup_with"
+            });
+          }
+        } catch (e) {
+          console.warn("Google Identity Services notice:", e);
         }
-      });
-    }
-  }, []);
+      }
+    };
+
+    initGsi();
+    const timer = setTimeout(initGsi, 600);
+    return () => clearTimeout(timer);
+  }, [tab]);
 
   const handleGoogleTokenLogin = async (credential: string) => {
     setLoading(true);
@@ -131,8 +164,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
   };
 
   const handleGoogleClick = () => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (clientId && window.google?.accounts?.id) {
+    if (window.google?.accounts?.id) {
       window.google.accounts.id.prompt();
     }
     setShowGoogleChooser(true);
@@ -317,26 +349,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
           {/* TAB 1: STANDARD LOG IN (DEFAULT) */}
           {tab === "login" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-              {/* Google OAuth Button */}
-              <button
-                type="button"
-                onClick={handleGoogleClick}
-                className="btn btn-secondary"
-                disabled={loading}
+              {/* Native Google OAuth Button Container */}
+              <div
+                id="native-google-btn-login"
                 style={{
-                  width: "100%",
-                  padding: "12px 16px",
+                  minHeight: "44px",
+                  display: "flex",
                   justifyContent: "center",
-                  gap: "10px",
-                  backgroundColor: "rgba(255, 255, 255, 0.05)",
-                  borderColor: "rgba(255, 255, 255, 0.15)",
-                  fontWeight: 600,
-                  fontSize: "14px"
+                  alignItems: "center",
+                  width: "100%"
                 }}
               >
-                <GoogleIcon />
-                Sign in with Google
-              </button>
+                <button
+                  type="button"
+                  onClick={handleGoogleClick}
+                  className="btn btn-secondary"
+                  disabled={loading}
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    justifyContent: "center",
+                    gap: "10px",
+                    backgroundColor: "rgba(255, 255, 255, 0.05)",
+                    borderColor: "rgba(255, 255, 255, 0.15)",
+                    fontWeight: 600,
+                    fontSize: "14px"
+                  }}
+                >
+                  <GoogleIcon />
+                  Sign in with Google
+                </button>
+              </div>
 
               {/* Divider */}
               <div style={{ display: "flex", alignItems: "center", margin: "2px 0", gap: "12px" }}>
@@ -468,25 +511,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
           {/* TAB 2: SIGN UP */}
           {tab === "register" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-              <button
-                type="button"
-                onClick={handleGoogleClick}
-                className="btn btn-secondary"
-                disabled={loading}
+              {/* Native Google OAuth Button Container */}
+              <div
+                id="native-google-btn-register"
                 style={{
-                  width: "100%",
-                  padding: "12px 16px",
+                  minHeight: "44px",
+                  display: "flex",
                   justifyContent: "center",
-                  gap: "10px",
-                  backgroundColor: "rgba(255, 255, 255, 0.05)",
-                  borderColor: "rgba(255, 255, 255, 0.15)",
-                  fontWeight: 600,
-                  fontSize: "14px"
+                  alignItems: "center",
+                  width: "100%"
                 }}
               >
-                <GoogleIcon />
-                Sign up with Google
-              </button>
+                <button
+                  type="button"
+                  onClick={handleGoogleClick}
+                  className="btn btn-secondary"
+                  disabled={loading}
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    justifyContent: "center",
+                    gap: "10px",
+                    backgroundColor: "rgba(255, 255, 255, 0.05)",
+                    borderColor: "rgba(255, 255, 255, 0.15)",
+                    fontWeight: 600,
+                    fontSize: "14px"
+                  }}
+                >
+                  <GoogleIcon />
+                  Sign up with Google
+                </button>
+              </div>
 
               <div style={{ display: "flex", alignItems: "center", margin: "2px 0", gap: "12px" }}>
                 <div style={{ flex: 1, height: "1px", backgroundColor: "var(--border-color)" }} />

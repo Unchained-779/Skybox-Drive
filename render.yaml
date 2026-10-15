@@ -23,4 +23,6 @@ services:
       - key: STORAGE_LOCAL_PATH
         value: ./server/storage_data
       - key: GOOGLE_CLIENT_ID
-        sync: false
+        value: 547814438680-q5ovo59fntrb2apk8f0v73l0ic3d7mmm.apps.googleusercontent.com
+      - key: VITE_GOOGLE_CLIENT_ID
+        value: 547814438680-q5ovo59fntrb2apk8f0v73l0ic3d7mmm.apps.googleusercontent.com
