@@ -126,7 +126,11 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
     mime.includes("csv");
 
   const isStorageNotFoundError =
-    error && (error.toLowerCase().includes("not found on storage") || error.includes("404"));
+    error &&
+    (error.toLowerCase().includes("not found on storage") ||
+      error.toLowerCase().includes("went wrong on the server") ||
+      error.includes("404") ||
+      error.includes("500"));
 
   const handleCopyText = () => {
     if (textContent) {

@@ -5,6 +5,7 @@ import { Readable } from "stream";
 import { v4 as uuidv4 } from "uuid";
 import { IStorageProvider, SaveFileResult, ByteRange } from "../../interfaces/IStorageProvider";
 import { env } from "../../config/env";
+import { NotFoundError } from "../../utils/errors";
 
 export class LocalStorageProvider implements IStorageProvider {
   private readonly storageDir: string;
@@ -81,7 +82,7 @@ export class LocalStorageProvider implements IStorageProvider {
   public async getFileStream(key: string, range?: ByteRange): Promise<Readable> {
     const filePath = this.getSafeFilePath(key);
     if (!fs.existsSync(filePath)) {
-      throw new Error(`File with key "${key}" not found on storage.`);
+      throw new NotFoundError(`File not found on storage disk. It may have been cleared during a server redeployment.`);
     }
 
     if (range) {
