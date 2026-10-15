@@ -17,9 +17,14 @@ interface MockAccount {
 
 const DEFAULT_ACCOUNTS: MockAccount[] = [
   {
+    name: "Google Evaluator",
+    email: "evaluator.skybox@gmail.com",
+    avatar: "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Evaluator&backgroundColor=1a73e8"
+  },
+  {
     name: "Vivek Chandra",
     email: "vivek.chandra@gmail.com",
-    avatar: "https://api.dicebear.com/7.x/initials/svg?seed=Vivek%20Chandra&backgroundColor=1a73e8"
+    avatar: "https://api.dicebear.com/7.x/initials/svg?seed=Vivek%20Chandra&backgroundColor=4285F4"
   },
   {
     name: "Ravi Chandra",
@@ -93,10 +98,39 @@ export const GoogleAccountChooserModal: React.FC<GoogleAccountChooserModalProps>
     return `${header}.${payload}.googleSignatureMock`;
   };
 
-  const handleSelectAccount = (account: MockAccount) => {
+  const executeGoogleLogin = async (account: MockAccount) => {
     setSelectedAccount(account);
+    setLoading(true);
     setError(null);
-    setStep("permissions");
+    try {
+      const token = createGoogleToken(
+        account.email,
+        account.name,
+        account.avatar
+      );
+      const res = await api.loginWithGoogle(token);
+      setAuthToken(res.token);
+      try {
+        const stored = localStorage.getItem("skybox_device_google_accounts");
+        const list: MockAccount[] = stored ? JSON.parse(stored) : [];
+        if (!list.some((a) => a.email.toLowerCase() === account.email.toLowerCase())) {
+          list.push(account);
+          localStorage.setItem("skybox_device_google_accounts", JSON.stringify(list));
+        }
+      } catch {
+        // Ignore
+      }
+      onSuccess(res);
+      onClose();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Google authentication failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSelectAccount = (account: MockAccount) => {
+    executeGoogleLogin(account);
   };
 
   const handleCustomSubmit = (e: React.FormEvent) => {
@@ -111,38 +145,12 @@ export const GoogleAccountChooserModal: React.FC<GoogleAccountChooserModalProps>
       email: customEmail.toLowerCase(),
       avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundColor=1a73e8`
     };
-    setSelectedAccount(account);
-    setStep("permissions");
+    executeGoogleLogin(account);
   };
 
   const handleAllowPermissions = async () => {
-    if (!selectedAccount) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const token = createGoogleToken(
-        selectedAccount.email,
-        selectedAccount.name,
-        selectedAccount.avatar
-      );
-      const res = await api.loginWithGoogle(token);
-      setAuthToken(res.token);
-      try {
-        const stored = localStorage.getItem("skybox_device_google_accounts");
-        const list: MockAccount[] = stored ? JSON.parse(stored) : [];
-        if (!list.some((a) => a.email.toLowerCase() === selectedAccount.email.toLowerCase())) {
-          list.push(selectedAccount);
-          localStorage.setItem("skybox_device_google_accounts", JSON.stringify(list));
-        }
-      } catch {
-        // Ignore
-      }
-      onSuccess(res);
-      onClose();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Google authentication failed.");
-    } finally {
-      setLoading(false);
+    if (selectedAccount) {
+      executeGoogleLogin(selectedAccount);
     }
   };
 
