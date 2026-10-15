@@ -9,7 +9,7 @@ import {
   UserProfileSummary
 } from "./types";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "/api";
 
 export const getAuthToken = (): string | null => {
   return localStorage.getItem("skybox_token");
