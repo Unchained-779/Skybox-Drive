@@ -9,6 +9,17 @@ export interface User {
   loginCount?: number;
 }
 
+export interface UserProfileSummary {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  authProvider: "local" | "google";
+  storageQuota: number;
+  usedStorage: number;
+  createdAt: string;
+}
+
 export interface WelcomeEmail {
   id: string;
   to: string;

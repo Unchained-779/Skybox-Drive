@@ -5,7 +5,8 @@ import {
   FolderItem,
   FileItem,
   AuthSuccessResult,
-  SecurityNotificationItem
+  SecurityNotificationItem,
+  UserProfileSummary
 } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000/api";
@@ -70,6 +71,20 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ credential })
+    });
+    return handleResponse(res);
+  },
+
+  async getPublicProfiles(): Promise<UserProfileSummary[]> {
+    const res = await fetch(`${API_BASE}/auth/profiles`);
+    return handleResponse(res);
+  },
+
+  async quickLogin(email: string): Promise<AuthSuccessResult> {
+    const res = await fetch(`${API_BASE}/auth/quick-login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email })
     });
     return handleResponse(res);
   },

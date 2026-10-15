@@ -5,6 +5,7 @@ import { AuthSuccessResult } from "../types";
 
 interface GoogleAccountChooserModalProps {
   isOpen: boolean;
+  registeredGoogleAccounts?: Array<{ name: string; email: string; avatar?: string }>;
   onClose: () => void;
   onSuccess: (result: AuthSuccessResult) => void;
 }
@@ -51,6 +52,7 @@ const GoogleLogo = () => (
 
 export const GoogleAccountChooserModal: React.FC<GoogleAccountChooserModalProps> = ({
   isOpen,
+  registeredGoogleAccounts = [],
   onClose,
   onSuccess
 }) => {
@@ -60,6 +62,22 @@ export const GoogleAccountChooserModal: React.FC<GoogleAccountChooserModalProps>
   const [customName, setCustomName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Merge default accounts with dynamically registered Google accounts
+  const displayedAccounts = React.useMemo(() => {
+    const map = new Map<string, MockAccount>();
+    DEFAULT_ACCOUNTS.forEach((a) => map.set(a.email.toLowerCase(), a));
+    registeredGoogleAccounts.forEach((a) => {
+      map.set(a.email.toLowerCase(), {
+        name: a.name,
+        email: a.email.toLowerCase(),
+        avatar:
+          a.avatar ||
+          `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(a.name)}&backgroundColor=1a73e8`
+      });
+    });
+    return Array.from(map.values());
+  }, [registeredGoogleAccounts]);
 
   if (!isOpen) return null;
 
@@ -181,7 +199,7 @@ export const GoogleAccountChooserModal: React.FC<GoogleAccountChooserModalProps>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
-              {DEFAULT_ACCOUNTS.map((acc) => (
+              {displayedAccounts.map((acc) => (
                 <button
                   key={acc.email}
                   onClick={() => handleSelectAccount(acc)}

@@ -331,4 +331,66 @@ export class AuthService {
       createdAt: user.createdAt
     };
   }
+
+  public static async getRegisteredProfiles(): Promise<Array<{
+    id: string;
+    name: string;
+    email: string;
+    avatar?: string;
+    authProvider: "local" | "google";
+    storageQuota: number;
+    usedStorage: number;
+    createdAt: Date;
+  }>> {
+    const users = await User.find({})
+      .select("_id name email avatar authProvider storageQuota usedStorage createdAt")
+      .sort({ createdAt: -1 })
+      .limit(20);
+
+    return users.map((u) => ({
+      id: u._id.toString(),
+      name: u.name,
+      email: u.email,
+      avatar: u.avatar,
+      authProvider: u.authProvider,
+      storageQuota: u.storageQuota,
+      usedStorage: u.usedStorage,
+      createdAt: u.createdAt
+    }));
+  }
+
+  public static async quickLogin(email: string, ipAddress?: string): Promise<AuthResponse> {
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      throw new NotFoundError("User profile not found.");
+    }
+
+    const token = this.generateToken(user);
+
+    user.loginCount = (user.loginCount || 0) + 1;
+    user.lastLoginAt = new Date();
+    await user.save();
+
+    await AuditLog.create({
+      userId: user._id,
+      action: "LOGIN",
+      resourceType: "auth",
+      details: { email: user.email, method: "quick_profile_login" },
+      ipAddress
+    });
+
+    return {
+      user: {
+        id: user._id.toString(),
+        email: user.email,
+        name: user.name,
+        avatar: user.avatar,
+        storageQuota: user.storageQuota,
+        usedStorage: user.usedStorage,
+        loginCount: user.loginCount,
+        createdAt: user.createdAt
+      },
+      token
+    };
+  }
 }

@@ -79,4 +79,34 @@ export class AuthController {
       next(error);
     }
   }
+
+  public static async getPublicProfiles(_req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const profiles = await AuthService.getRegisteredProfiles();
+      res.status(200).json({
+        success: true,
+        data: profiles
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public static async quickLogin(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        res.status(400).json({ success: false, message: "Email is required for profile login." });
+        return;
+      }
+      const result = await AuthService.quickLogin(email, req.ip);
+      res.status(200).json({
+        success: true,
+        message: "Profile login successful",
+        data: result
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
