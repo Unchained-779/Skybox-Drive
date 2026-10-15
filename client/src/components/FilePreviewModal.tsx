@@ -11,7 +11,8 @@ import {
   Loader2,
   Copy,
   Check,
-  AlertCircle
+  AlertCircle,
+  ExternalLink
 } from "lucide-react";
 import { FileItem } from "../types";
 import { api } from "../api";
@@ -124,6 +125,10 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
     mime.includes("typescript") ||
     mime.includes("xml") ||
     mime.includes("csv");
+
+  const isMobile =
+    typeof window !== "undefined" &&
+    (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
 
   const isStorageNotFoundError =
     error &&
@@ -239,6 +244,17 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
               >
                 {copied ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
                 <span>{copied ? "Copied" : "Copy"}</span>
+              </button>
+            )}
+            {isPdf && blobUrl && (
+              <button
+                className="btn btn-secondary"
+                style={{ padding: "8px 12px", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}
+                onClick={() => window.open(blobUrl, "_blank")}
+                title="Open in new window / reader"
+              >
+                <ExternalLink size={14} />
+                <span>Open</span>
               </button>
             )}
             <button
@@ -438,18 +454,97 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
             </div>
           )}
 
-          {/* Success: PDF Preview */}
+          {/* Success: PDF Preview (Mobile Friendly & Desktop Iframe) */}
           {!loading && !error && isPdf && blobUrl && (
-            <iframe
-              src={blobUrl}
-              title={file.name}
-              style={{
-                width: "100%",
-                height: "72vh",
-                border: "none",
-                borderRadius: "8px"
-              }}
-            />
+            isMobile ? (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "32px 16px",
+                  textAlign: "center",
+                  width: "100%",
+                  maxWidth: "360px"
+                }}
+              >
+                <div
+                  style={{
+                    width: "72px",
+                    height: "72px",
+                    borderRadius: "16px",
+                    backgroundColor: "rgba(239, 68, 68, 0.15)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: "16px"
+                  }}
+                >
+                  <FileText size={40} color="#ef4444" />
+                </div>
+                <h4
+                  style={{
+                    fontSize: "16px",
+                    fontWeight: 600,
+                    color: "#ffffff",
+                    marginBottom: "6px",
+                    wordBreak: "break-word"
+                  }}
+                >
+                  {file.name}
+                </h4>
+                <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "24px" }}>
+                  {formatBytes(file.size)} • PDF Document
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%" }}>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => window.open(blobUrl, "_blank")}
+                    style={{
+                      width: "100%",
+                      padding: "12px 18px",
+                      fontSize: "14px",
+                      fontWeight: 600,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px"
+                    }}
+                  >
+                    <ExternalLink size={16} />
+                    <span>Open in Mobile PDF Viewer</span>
+                  </button>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => onDownload(file)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 18px",
+                      fontSize: "13px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px"
+                    }}
+                  >
+                    <Download size={15} />
+                    <span>Download PDF</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <iframe
+                src={blobUrl}
+                title={file.name}
+                style={{
+                  width: "100%",
+                  height: "72vh",
+                  border: "none",
+                  borderRadius: "8px"
+                }}
+              />
+            )
           )}
 
           {/* Success: Text / Code Preview */}
