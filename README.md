@@ -25,6 +25,10 @@ Engineered with decoupled storage abstractions, atomic quota reservation, file v
 5. **Cycle-Safe Folder Movement & Ancestor Rewriting**: Moving Folder A into Folder X updates Folder A's `parentId` and executes a bulk update to rewrite the old ancestor prefix with the new parent's path across all descendant sub-folders. Prevents circular loop bugs where a parent is moved into its own descendant.
 6. **Partial Filter Unique Indexes for Trash**: Compound indexes `{ ownerId: 1, parentId: 1, name: 1 }` apply `{ unique: true, partialFilterExpression: { isTrash: false } }`. Users can soft-delete multiple files/folders with identical names over time without index collisions.
 7. **HTTP 206 Partial Content Streaming**: Supports `Range: bytes=start-end` requests for in-browser video and audio seeking without buffering entire files into memory.
+8. **Authenticated Blob Preview Lightbox**: In-memory authenticated blob streaming allows instant previewing of high-resolution images, videos, audio, PDFs, and syntax-highlighted code/text files with mobile-friendly reader integration.
+9. **Visual Directory Relocation with Cycle Prevention**: Interactive folder picker dialog for moving files or folders across directory trees, enforcing ancestor-cycle detection to guarantee acyclic hierarchies.
+10. **Multi-Selection & Batch File Actions**: Full table/grid multi-selection with floating bottom action bar for bulk downloading, bulk relocation, and bulk soft-deleting.
+11. **Multi-Column Sorting & Dual View Layout**: Real-time ascending/descending sorting across Name, Size, and Last Modified timestamp, with instant toggling between Detailed Table and Responsive Card Grid views.
 
 ---
 
