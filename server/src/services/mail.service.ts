@@ -39,7 +39,10 @@ export class MailService {
       } else {
         // Create an automated Ethereal / Stream transporter for development and instant previews
         try {
-          const testAccount = await nodemailer.createTestAccount();
+          const testAccount = await Promise.race([
+            nodemailer.createTestAccount(),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Ethereal test account timeout")), 2000))
+          ]);
           this.transporter = nodemailer.createTransport({
             host: "smtp.ethereal.email",
             port: 587,
@@ -145,36 +148,14 @@ export class MailService {
 </html>
     `;
 
-    let previewUrl: string | undefined;
-
-    try {
-      const transporter = await this.getTransporter();
-      const info = await transporter.sendMail({
-        from: '"Skybox Security Team" <security@skybox.io>',
-        to,
-        subject,
-        html: htmlContent
-      });
-
-      const etherealUrl = nodemailer.getTestMessageUrl(info);
-      if (etherealUrl) {
-        previewUrl = etherealUrl;
-        console.log(`✉️ [MailService] Sent security email to ${to}. Preview: ${previewUrl}`);
-      } else {
-        console.log(`✉️ [MailService] Sent security email to ${to} (MessageId: ${info.messageId})`);
-      }
-    } catch (err) {
-      console.warn("⚠️ [MailService] Failed to send via transport, saving notification to database:", err);
-    }
-
-    // Save notification to database so it is guaranteed visible to the user in the UI!
+    // 1. Save notification to database immediately so UI bell / history updates in 1ms
     const notification = await SecurityNotification.create({
       userId,
       to,
       subject,
       htmlContent,
       type: isFirstLogin ? "welcome_first_login" : "security_alert",
-      previewUrl,
+      previewUrl: undefined,
       isRead: false,
       metadata: {
         authProvider,
@@ -183,6 +164,29 @@ export class MailService {
         timestamp
       }
     });
+
+    // 2. Dispatch outbound email in the background without blocking the HTTP auth response
+    (async () => {
+      try {
+        const transporter = await this.getTransporter();
+        const info = await transporter.sendMail({
+          from: '"Skybox Security Team" <security@skybox.io>',
+          to,
+          subject,
+          html: htmlContent
+        });
+
+        const etherealUrl = nodemailer.getTestMessageUrl(info);
+        if (etherealUrl) {
+          await SecurityNotification.findByIdAndUpdate(notification._id, { previewUrl: etherealUrl });
+          console.log(`✉️ [MailService] Sent security email to ${to}. Preview: ${etherealUrl}`);
+        } else {
+          console.log(`✉️ [MailService] Sent security email to ${to} (MessageId: ${info.messageId})`);
+        }
+      } catch (err) {
+        console.warn("⚠️ [MailService] Background email delivery warning:", err);
+      }
+    })();
 
     return notification;
   }
@@ -254,35 +258,14 @@ export class MailService {
 </html>
     `;
 
-    let previewUrl: string | undefined = undefined;
-
-    try {
-      const transporter = await this.getTransporter();
-      const info = await transporter.sendMail({
-        from: `"${inviterName} via Skybox Drive" <share@skybox.io>`,
-        to,
-        subject,
-        html: htmlContent
-      });
-
-      const etherealUrl = nodemailer.getTestMessageUrl(info);
-      if (etherealUrl) {
-        previewUrl = etherealUrl;
-        console.log(`✉️ [MailService] Sent share invitation to ${to}. Preview: ${previewUrl}`);
-      } else {
-        console.log(`✉️ [MailService] Sent share invitation to ${to} (MessageId: ${info.messageId})`);
-      }
-    } catch (err) {
-      console.warn("⚠️ [MailService] Failed to send via transport, saving notification to database:", err);
-    }
-
+    // 1. Save notification to database immediately
     const notification = await SecurityNotification.create({
       userId,
       to,
       subject,
       htmlContent,
       type: "share_invite",
-      previewUrl,
+      previewUrl: undefined,
       isRead: false,
       metadata: {
         inviterName,
@@ -292,6 +275,29 @@ export class MailService {
         timestamp
       }
     });
+
+    // 2. Dispatch outbound invitation email in background without blocking
+    (async () => {
+      try {
+        const transporter = await this.getTransporter();
+        const info = await transporter.sendMail({
+          from: `"${inviterName} via Skybox Drive" <share@skybox.io>`,
+          to,
+          subject,
+          html: htmlContent
+        });
+
+        const etherealUrl = nodemailer.getTestMessageUrl(info);
+        if (etherealUrl) {
+          await SecurityNotification.findByIdAndUpdate(notification._id, { previewUrl: etherealUrl });
+          console.log(`✉️ [MailService] Sent share invitation to ${to}. Preview: ${etherealUrl}`);
+        } else {
+          console.log(`✉️ [MailService] Sent share invitation to ${to} (MessageId: ${info.messageId})`);
+        }
+      } catch (err) {
+        console.warn("⚠️ [MailService] Background invite email delivery warning:", err);
+      }
+    })();
 
     return notification;
   }
