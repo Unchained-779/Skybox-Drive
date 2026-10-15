@@ -43,12 +43,12 @@ export class LocalStorageProvider implements IStorageProvider {
         bytesWritten += typeof chunk === "string" ? Buffer.byteLength(chunk) : chunk.length;
       });
 
-      readStream.on("error", (err) => {
+      readStream.on("error", (err: Error) => {
         writeStream.end();
         reject(err);
       });
 
-      writeStream.on("error", (err) => {
+      writeStream.on("error", (err: Error) => {
         reject(err);
       });
 

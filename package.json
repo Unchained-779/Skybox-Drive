@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Production Cloud File Storage & Collaboration System (Google Drive Clone)",
   "scripts": {
-    "install:all": "npm install --prefix server && npm install --prefix client",
+    "install:all": "npm install --include=dev --prefix server && npm install --include=dev --prefix client",
     "build:server": "npm run build --prefix server",
     "build:client": "npm run build --prefix client",
     "build": "npm run build --prefix server && npm run build --prefix client",

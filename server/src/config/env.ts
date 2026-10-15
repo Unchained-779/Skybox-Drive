@@ -18,11 +18,5 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional()
 });
 
-const parsedEnv = envSchema.safeParse(process.env);
+export const env = envSchema.parse(process.env);
 
-if (!parsedEnv.success) {
-  console.error("❌ Invalid environment variables:", parsedEnv.error.format());
-  process.exit(1);
-}
-
-export const env = parsedEnv.data;
