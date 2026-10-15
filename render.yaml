@@ -16,9 +16,9 @@ services:
         generateValue: true
       - key: CORS_ORIGIN
         value: "*"
-      - key: STORAGE_PROVIDER
+      - key: STORAGE_DRIVER
         value: local
-      - key: LOCAL_STORAGE_PATH
+      - key: STORAGE_LOCAL_PATH
         value: ./server/storage_data
       - key: GOOGLE_CLIENT_ID
         sync: false

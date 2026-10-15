@@ -60,7 +60,13 @@ export const createApp = (): Application => {
   app.use("/api", apiRoutes);
 
   // Serve Frontend client build in production if available
-  const clientDistPath = path.resolve(__dirname, "../../client/dist");
+  let clientDistPath = path.resolve(__dirname, "../../client/dist");
+  if (!fs.existsSync(clientDistPath)) {
+    clientDistPath = path.resolve(process.cwd(), "client/dist");
+  }
+  if (!fs.existsSync(clientDistPath)) {
+    clientDistPath = path.resolve(process.cwd(), "../client/dist");
+  }
   if (fs.existsSync(clientDistPath)) {
     app.use(express.static(clientDistPath));
     app.get("*", (req: Request, res: Response, next) => {
