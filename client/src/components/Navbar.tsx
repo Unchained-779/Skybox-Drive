@@ -1,5 +1,5 @@
 import React from "react";
-import { Search, LogOut, User as UserIcon, Bell } from "lucide-react";
+import { Search, LogOut, User as UserIcon, Bell, Menu } from "lucide-react";
 import { User } from "../types";
 
 interface NavbarProps {
@@ -9,6 +9,7 @@ interface NavbarProps {
   onOpenNotifications?: () => void;
   onSearchChange: (query: string) => void;
   onLogout: () => void;
+  onToggleMobileMenu?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -17,33 +18,46 @@ export const Navbar: React.FC<NavbarProps> = ({
   unreadNotificationsCount = 0,
   onOpenNotifications,
   onSearchChange,
-  onLogout
+  onLogout,
+  onToggleMobileMenu
 }) => {
   return (
     <header className="topbar">
-      {/* Search Input */}
-      <div style={{ position: "relative", width: "420px", maxWidth: "100%" }}>
-        <Search
-          size={18}
-          color="var(--text-muted)"
-          style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)" }}
-        />
-        <input
-          type="text"
-          placeholder="Search in Drive (files, folders)..."
-          className="input-field"
-          style={{
-            paddingLeft: "42px",
-            backgroundColor: "rgba(20, 30, 51, 0.6)",
-            borderRadius: "9999px"
-          }}
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-        />
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, minWidth: 0 }}>
+        {/* Mobile Hamburger Button */}
+        <button
+          type="button"
+          className="mobile-menu-btn"
+          onClick={onToggleMobileMenu}
+          aria-label="Toggle navigation drawer"
+        >
+          <Menu size={20} />
+        </button>
+
+        {/* Search Input */}
+        <div className="topbar-search-container">
+          <Search
+            size={18}
+            color="var(--text-muted)"
+            style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)" }}
+          />
+          <input
+            type="text"
+            placeholder="Search in Drive..."
+            className="input-field"
+            style={{
+              paddingLeft: "42px",
+              backgroundColor: "rgba(20, 30, 51, 0.6)",
+              borderRadius: "9999px"
+            }}
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+          />
+        </div>
       </div>
 
       {/* User Info & Actions */}
-      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+      <div className="topbar-user-section">
         {user ? (
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div
@@ -95,7 +109,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </span>
                 )}
               </div>
-              <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{user.email}</span>
+              <span className="user-email-text">{user.email}</span>
             </div>
 
             {/* Security Alerts / Emails Bell */}

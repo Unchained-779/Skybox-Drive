@@ -9,7 +9,18 @@ interface BreadcrumbsProps {
 
 export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ breadcrumbs, onNavigate }) => {
   return (
-    <nav style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "24px" }}>
+    <nav
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        marginBottom: "20px",
+        overflowX: "auto",
+        whiteSpace: "nowrap",
+        WebkitOverflowScrolling: "touch",
+        paddingBottom: "4px"
+      }}
+    >
       {breadcrumbs.map((crumb, idx) => {
         const isLast = idx === breadcrumbs.length - 1;
         return (

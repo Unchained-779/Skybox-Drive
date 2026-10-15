@@ -1,5 +1,5 @@
 import React from "react";
-import { Cloud, HardDrive, Users, Trash2, Plus, FolderPlus, UploadCloud } from "lucide-react";
+import { Cloud, HardDrive, Users, Trash2, Plus, FolderPlus, UploadCloud, X } from "lucide-react";
 import { StorageWidget } from "./StorageWidget";
 import { StorageStats } from "../types";
 
@@ -9,6 +9,8 @@ interface SidebarProps {
   onOpenNewFolder: () => void;
   onOpenUpload: () => void;
   storageStats: StorageStats | null;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -16,35 +18,69 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onTabChange,
   onOpenNewFolder,
   onOpenUpload,
-  storageStats
+  storageStats,
+  isMobileOpen = false,
+  onCloseMobile
 }) => {
   const [showNewMenu, setShowNewMenu] = React.useState(false);
 
+  const handleSelectTab = (tab: "my-drive" | "shared-with-me" | "trash") => {
+    onTabChange(tab);
+    onCloseMobile?.();
+  };
+
+  const handleNewFolder = () => {
+    setShowNewMenu(false);
+    onOpenNewFolder();
+    onCloseMobile?.();
+  };
+
+  const handleUpload = () => {
+    setShowNewMenu(false);
+    onOpenUpload();
+    onCloseMobile?.();
+  };
+
   return (
-    <aside className="sidebar">
-      {/* Brand */}
-      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "28px" }}>
-        <div
-          style={{
-            width: "38px",
-            height: "38px",
-            borderRadius: "10px",
-            background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "0 4px 12px rgba(59, 130, 246, 0.4)"
-          }}
-        >
-          <Cloud size={22} color="#ffffff" />
+    <>
+      {isMobileOpen && (
+        <div className="sidebar-backdrop" onClick={onCloseMobile} />
+      )}
+      <aside className={`sidebar ${isMobileOpen ? "mobile-open" : ""}`}>
+        {/* Brand Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "28px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div
+              style={{
+                width: "38px",
+                height: "38px",
+                borderRadius: "10px",
+                background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 4px 12px rgba(59, 130, 246, 0.4)"
+              }}
+            >
+              <Cloud size={22} color="#ffffff" />
+            </div>
+            <div>
+              <h1 style={{ fontSize: "18px", fontWeight: 700, letterSpacing: "-0.02em" }}>
+                Skybox <span style={{ color: "var(--accent-blue)" }}>Drive</span>
+              </h1>
+              <p style={{ fontSize: "11px", color: "var(--text-muted)" }}>Secure Cloud Storage</p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="mobile-sidebar-close"
+            onClick={onCloseMobile}
+            aria-label="Close menu"
+          >
+            <X size={18} />
+          </button>
         </div>
-        <div>
-          <h1 style={{ fontSize: "18px", fontWeight: 700, letterSpacing: "-0.02em" }}>
-            Skybox <span style={{ color: "var(--accent-blue)" }}>Drive</span>
-          </h1>
-          <p style={{ fontSize: "11px", color: "var(--text-muted)" }}>Secure Cloud Storage</p>
-        </div>
-      </div>
 
       {/* New Button with Dropdown */}
       <div style={{ position: "relative", marginBottom: "24px" }}>
@@ -89,10 +125,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }}
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-hover)")}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-              onClick={() => {
-                setShowNewMenu(false);
-                onOpenUpload();
-              }}
+              onClick={handleUpload}
             >
               <UploadCloud size={16} color="var(--accent-blue)" />
               File Upload
@@ -114,10 +147,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }}
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-hover)")}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-              onClick={() => {
-                setShowNewMenu(false);
-                onOpenNewFolder();
-              }}
+              onClick={handleNewFolder}
             >
               <FolderPlus size={16} color="#fbbf24" />
               New Folder
@@ -143,7 +173,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             textAlign: "left",
             transition: "all 0.2s"
           }}
-          onClick={() => onTabChange("my-drive")}
+          onClick={() => handleSelectTab("my-drive")}
         >
           <HardDrive size={18} />
           My Drive
@@ -165,7 +195,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             textAlign: "left",
             transition: "all 0.2s"
           }}
-          onClick={() => onTabChange("shared-with-me")}
+          onClick={() => handleSelectTab("shared-with-me")}
         >
           <Users size={18} />
           Shared with me
@@ -186,7 +216,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             textAlign: "left",
             transition: "all 0.2s"
           }}
-          onClick={() => onTabChange("trash")}
+          onClick={() => handleSelectTab("trash")}
         >
           <Trash2 size={18} />
           Trash
@@ -196,5 +226,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Storage Breakdown Widget */}
       <StorageWidget stats={storageStats} />
     </aside>
+  </>
   );
 };

@@ -36,13 +36,7 @@ export const FolderGrid: React.FC<FolderGridProps> = ({
         Folders
       </h3>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))",
-          gap: "16px"
-        }}
-      >
+      <div className="folder-grid">
         {folders.map((folder) => {
           const isShared = folder.sharedWith && folder.sharedWith.length > 0;
           return (

@@ -64,6 +64,7 @@ export const App: React.FC = () => {
   const [welcomeToast, setWelcomeToast] = useState<{ email: WelcomeEmail; visible: boolean } | null>(null);
 
   // Modal / Drawer State
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showNewFolderModal, setShowNewFolderModal] = useState(false);
   const [shareTarget, setShareTarget] = useState<{ item: FolderItem | FileItem; type: "file" | "folder" } | null>(null);
@@ -322,10 +323,19 @@ export const App: React.FC = () => {
         onTabChange={(tab) => {
           setCurrentTab(tab);
           setCurrentFolderId(null);
+          setIsMobileNavOpen(false);
         }}
-        onOpenNewFolder={() => setShowNewFolderModal(true)}
-        onOpenUpload={() => setShowUploadModal(true)}
+        onOpenNewFolder={() => {
+          setShowNewFolderModal(true);
+          setIsMobileNavOpen(false);
+        }}
+        onOpenUpload={() => {
+          setShowUploadModal(true);
+          setIsMobileNavOpen(false);
+        }}
         storageStats={storageStats}
+        isMobileOpen={isMobileNavOpen}
+        onCloseMobile={() => setIsMobileNavOpen(false)}
       />
 
       {/* Main Workspace */}
@@ -337,6 +347,7 @@ export const App: React.FC = () => {
           onOpenNotifications={() => setShowNotificationsModal(true)}
           onSearchChange={setSearchQuery}
           onLogout={handleLogout}
+          onToggleMobileMenu={() => setIsMobileNavOpen((prev) => !prev)}
         />
 
         <main className="content-body">

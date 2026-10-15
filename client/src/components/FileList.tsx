@@ -92,15 +92,9 @@ export const FileList: React.FC<FileListProps> = ({
         Files
       </h3>
 
-      <div
-        style={{
-          borderRadius: "var(--radius-md)",
-          border: "1px solid var(--border-color)",
-          backgroundColor: "var(--bg-secondary)",
-          overflow: "hidden"
-        }}
-      >
-        {/* Table Header */}
+      <div className="file-table-container">
+        <div className="file-table-grid">
+          {/* Table Header */}
         <div
           style={{
             display: "grid",
@@ -247,6 +241,7 @@ export const FileList: React.FC<FileListProps> = ({
             </div>
           );
         })}
+        </div>
       </div>
     </div>
   );
