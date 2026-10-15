@@ -10,7 +10,8 @@ import {
   File as GenericFile,
   Loader2,
   Copy,
-  Check
+  Check,
+  AlertCircle
 } from "lucide-react";
 import { FileItem } from "../types";
 import { api } from "../api";
@@ -34,8 +35,10 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   onClose,
   onDownload
 }) => {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [textContent, setTextContent] = useState<string | null>(null);
-  const [textLoading, setTextLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
 
   useEffect(() => {
@@ -50,41 +53,66 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
 
   useEffect(() => {
     if (!file) {
+      setBlobUrl(null);
       setTextContent(null);
+      setError(null);
       return;
     }
 
-    const mime = file.mimeType.toLowerCase();
-    const isText =
-      mime.startsWith("text/") ||
-      mime.includes("json") ||
-      mime.includes("javascript") ||
-      mime.includes("typescript") ||
-      mime.includes("xml") ||
-      mime.includes("csv");
+    let activeObjectUrl: string | null = null;
+    let isCancelled = false;
 
-    if (isText) {
-      setTextLoading(true);
-      const url = api.getPreviewUrl(file._id, file.currentVersion);
-      fetch(url)
-        .then((res) => {
-          if (!res.ok) throw new Error("Failed to load text content");
-          return res.text();
-        })
-        .then((text) => setTextContent(text))
-        .catch(() => setTextContent("Error: Unable to load file preview."))
-        .finally(() => setTextLoading(false));
-    } else {
+    const loadContent = async () => {
+      setLoading(true);
+      setError(null);
+      setBlobUrl(null);
       setTextContent(null);
-      setTextLoading(false);
-    }
+
+      try {
+        const { blob, url } = await api.getFileBlob(file._id, file.currentVersion);
+        if (isCancelled) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+
+        activeObjectUrl = url;
+        setBlobUrl(url);
+
+        const mime = file.mimeType.toLowerCase();
+        const isText =
+          mime.startsWith("text/") ||
+          mime.includes("json") ||
+          mime.includes("javascript") ||
+          mime.includes("typescript") ||
+          mime.includes("xml") ||
+          mime.includes("csv");
+
+        if (isText) {
+          const text = await blob.text();
+          if (!isCancelled) setTextContent(text);
+        }
+      } catch (err: unknown) {
+        if (!isCancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load file preview");
+        }
+      } finally {
+        if (!isCancelled) setLoading(false);
+      }
+    };
+
+    loadContent();
+
+    return () => {
+      isCancelled = true;
+      if (activeObjectUrl) {
+        URL.revokeObjectURL(activeObjectUrl);
+      }
+    };
   }, [file]);
 
   if (!file) return null;
 
-  const previewUrl = api.getPreviewUrl(file._id, file.currentVersion);
   const mime = file.mimeType.toLowerCase();
-
   const isImage = mime.startsWith("image/");
   const isVideo = mime.startsWith("video/");
   const isAudio = mime.startsWith("audio/");
@@ -96,6 +124,9 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
     mime.includes("typescript") ||
     mime.includes("xml") ||
     mime.includes("csv");
+
+  const isStorageNotFoundError =
+    error && (error.toLowerCase().includes("not found on storage") || error.includes("404"));
 
   const handleCopyText = () => {
     if (textContent) {
@@ -187,7 +218,9 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                 <span>•</span>
                 <span>v{file.currentVersion}</span>
                 <span>•</span>
-                <span style={{ textTransform: "uppercase" }}>{file.mimeType.split("/")[1] || "FILE"}</span>
+                <span style={{ textTransform: "uppercase" }}>
+                  {file.mimeType.split("/")[1] || "FILE"}
+                </span>
               </div>
             </div>
           </div>
@@ -242,17 +275,110 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
             justifyContent: "center",
             padding: "24px",
             backgroundColor: "#080c14",
-            minHeight: "320px"
+            minHeight: "360px"
           }}
         >
-          {/* Image Preview */}
-          {isImage && (
+          {/* Loading State */}
+          {loading && (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "12px",
+                color: "var(--text-muted)"
+              }}
+            >
+              <Loader2 size={36} color="var(--accent-blue)" style={{ animation: "spin 1s linear infinite" }} />
+              <span style={{ fontSize: "14px" }}>Loading file preview...</span>
+            </div>
+          )}
+
+          {/* Error State with clear explanation */}
+          {!loading && error && (
+            <div
+              style={{
+                maxWidth: "460px",
+                textAlign: "center",
+                padding: "32px 20px"
+              }}
+            >
+              <div
+                style={{
+                  width: "64px",
+                  height: "64px",
+                  borderRadius: "50%",
+                  backgroundColor: "rgba(239, 68, 68, 0.15)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 16px"
+                }}
+              >
+                <AlertCircle size={32} color="#ef4444" />
+              </div>
+              <h4 style={{ fontSize: "16px", fontWeight: 600, color: "#ffffff", marginBottom: "8px" }}>
+                Preview Unavailable
+              </h4>
+              <p
+                style={{
+                  fontSize: "13px",
+                  color: "#fca5a5",
+                  marginBottom: isStorageNotFoundError ? "12px" : "20px",
+                  lineHeight: "1.5"
+                }}
+              >
+                {error}
+              </p>
+
+              {isStorageNotFoundError && (
+                <div
+                  style={{
+                    backgroundColor: "rgba(30, 41, 59, 0.7)",
+                    border: "1px solid var(--border-color)",
+                    borderRadius: "8px",
+                    padding: "12px 16px",
+                    fontSize: "12px",
+                    color: "var(--text-secondary)",
+                    lineHeight: "1.5",
+                    marginBottom: "20px",
+                    textAlign: "left"
+                  }}
+                >
+                  <strong style={{ color: "var(--text-primary)" }}>Why did this happen?</strong>
+                  <br />
+                  Free cloud instances (Render) run on temporary ephemeral storage that resets whenever a new version is deployed. Any files uploaded prior to a redeployment need to be re-uploaded.
+                </div>
+              )}
+
+              <div style={{ display: "flex", justifyContent: "center", gap: "10px" }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={onClose}
+                  style={{ padding: "8px 16px" }}
+                >
+                  Close
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => onDownload(file)}
+                  style={{ padding: "8px 16px" }}
+                >
+                  <Download size={14} />
+                  <span>Try Download</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Success: Image Preview */}
+          {!loading && !error && isImage && blobUrl && (
             <img
-              src={previewUrl}
+              src={blobUrl}
               alt={file.name}
               style={{
                 maxWidth: "100%",
-                maxHeight: "70vh",
+                maxHeight: "72vh",
                 objectFit: "contain",
                 borderRadius: "8px",
                 boxShadow: "0 10px 30px rgba(0,0,0,0.5)"
@@ -260,23 +386,23 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
             />
           )}
 
-          {/* Video Preview */}
-          {isVideo && (
+          {/* Success: Video Preview */}
+          {!loading && !error && isVideo && blobUrl && (
             <video
-              src={previewUrl}
+              src={blobUrl}
               controls
               autoPlay
               style={{
                 maxWidth: "100%",
-                maxHeight: "70vh",
+                maxHeight: "72vh",
                 borderRadius: "8px",
                 boxShadow: "0 10px 30px rgba(0,0,0,0.5)"
               }}
             />
           )}
 
-          {/* Audio Preview */}
-          {isAudio && (
+          {/* Success: Audio Preview */}
+          {!loading && !error && isAudio && blobUrl && (
             <div
               style={{
                 padding: "48px 32px",
@@ -304,14 +430,14 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
               <h4 style={{ fontSize: "16px", color: "var(--text-primary)", marginBottom: "16px" }}>
                 {file.name}
               </h4>
-              <audio src={previewUrl} controls autoPlay style={{ width: "100%" }} />
+              <audio src={blobUrl} controls autoPlay style={{ width: "100%" }} />
             </div>
           )}
 
-          {/* PDF Preview */}
-          {isPdf && (
+          {/* Success: PDF Preview */}
+          {!loading && !error && isPdf && blobUrl && (
             <iframe
-              src={previewUrl}
+              src={blobUrl}
               title={file.name}
               style={{
                 width: "100%",
@@ -322,39 +448,32 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
             />
           )}
 
-          {/* Text / Code Preview */}
-          {isText && (
+          {/* Success: Text / Code Preview */}
+          {!loading && !error && isText && (
             <div style={{ width: "100%", height: "100%" }}>
-              {textLoading ? (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "60px", color: "var(--text-secondary)" }}>
-                  <Loader2 size={32} className="spin" style={{ marginRight: "12px", animation: "spin 1s linear infinite" }} />
-                  <span>Loading file preview...</span>
-                </div>
-              ) : (
-                <pre
-                  style={{
-                    backgroundColor: "#0d1322",
-                    padding: "20px",
-                    borderRadius: "8px",
-                    color: "#e2e8f0",
-                    fontFamily: "Consolas, Monaco, 'Courier New', monospace",
-                    fontSize: "13px",
-                    lineHeight: "1.6",
-                    overflowX: "auto",
-                    maxHeight: "68vh",
-                    border: "1px solid var(--border-color)",
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word"
-                  }}
-                >
-                  {textContent}
-                </pre>
-              )}
+              <pre
+                style={{
+                  backgroundColor: "#0d1322",
+                  padding: "20px",
+                  borderRadius: "8px",
+                  color: "#e2e8f0",
+                  fontFamily: "Consolas, Monaco, 'Courier New', monospace",
+                  fontSize: "13px",
+                  lineHeight: "1.6",
+                  overflowX: "auto",
+                  maxHeight: "68vh",
+                  border: "1px solid var(--border-color)",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word"
+                }}
+              >
+                {textContent || "Empty file"}
+              </pre>
             </div>
           )}
 
-          {/* Unsupported File Type Fallback */}
-          {!isImage && !isVideo && !isAudio && !isPdf && !isText && (
+          {/* Success: Unsupported File Type Fallback */}
+          {!loading && !error && !isImage && !isVideo && !isAudio && !isPdf && !isText && (
             <div
               style={{
                 textAlign: "center",
@@ -376,10 +495,24 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
               >
                 <GenericFile size={36} color="var(--text-muted)" />
               </div>
-              <h4 style={{ fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", marginBottom: "8px" }}>
+              <h4
+                style={{
+                  fontSize: "16px",
+                  fontWeight: 600,
+                  color: "var(--text-primary)",
+                  marginBottom: "8px"
+                }}
+              >
                 Preview Not Available
               </h4>
-              <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "24px", lineHeight: "1.5" }}>
+              <p
+                style={{
+                  fontSize: "13px",
+                  color: "var(--text-secondary)",
+                  marginBottom: "24px",
+                  lineHeight: "1.5"
+                }}
+              >
                 This file format cannot be previewed directly in the browser. You can download it to view it with your local software.
               </p>
               <button

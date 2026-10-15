@@ -39,6 +39,15 @@ const getHeaders = (isFormData: boolean = false): HeadersInit => {
   return headers;
 };
 
+export const getAuthHeaders = (): HeadersInit => {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+};
+
 const handleResponse = async <T>(response: Response): Promise<T> => {
   const data = await response.json();
   if (!response.ok) {
@@ -183,6 +192,23 @@ export const api = {
     const token = getAuthToken();
     const query = versionNumber ? `version=${versionNumber}&` : "";
     return `${API_BASE}/files/${fileId}/download?${query}inline=true&token=${token}`;
+  },
+
+  async getFileBlob(fileId: string, versionNumber?: number): Promise<{ blob: Blob; url: string }> {
+    const token = getAuthToken();
+    const query = versionNumber ? `version=${versionNumber}&` : "";
+    const res = await fetch(`${API_BASE}/files/${fileId}/download?${query}inline=true&token=${token}`, {
+      headers: getAuthHeaders()
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || err.message || `Server returned error (${res.status})`);
+    }
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    return { blob, url };
   },
 
   async downloadFile(fileId: string, filename: string, versionNumber?: number): Promise<void> {
