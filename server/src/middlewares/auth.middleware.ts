@@ -18,12 +18,17 @@ export const authenticate = async (
   next: NextFunction
 ): Promise<void> => {
   try {
+    let token: string | undefined;
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      throw new UnauthorizedError("Missing or malformed Authorization header. Expected Bearer token.");
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
+    } else if (req.query.token && typeof req.query.token === "string") {
+      token = req.query.token;
     }
 
-    const token = authHeader.split(" ")[1];
+    if (!token) {
+      throw new UnauthorizedError("Missing or malformed Authorization. Expected Bearer header or token parameter.");
+    }
     const decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
 
     if (!decoded || !decoded.userId) {
@@ -52,9 +57,15 @@ export const optionalAuthenticate = async (
   next: NextFunction
 ): Promise<void> => {
   try {
+    let token: string | undefined;
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith("Bearer ")) {
-      const token = authHeader.split(" ")[1];
+      token = authHeader.split(" ")[1];
+    } else if (req.query.token && typeof req.query.token === "string") {
+      token = req.query.token;
+    }
+
+    if (token) {
       const decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
       if (decoded && decoded.userId) {
         const user = await User.findById(decoded.userId);

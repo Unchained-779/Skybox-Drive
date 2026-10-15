@@ -14,6 +14,8 @@ import { AuthModal } from "./components/AuthModal";
 import { EmailViewerModal } from "./components/EmailViewerModal";
 import { NotificationModal } from "./components/NotificationModal";
 import { PublicShareView } from "./components/PublicShareView";
+import { FilePreviewModal } from "./components/FilePreviewModal";
+import { MoveModal } from "./components/MoveModal";
 import { api, getAuthToken, removeAuthToken } from "./api";
 import {
   User,
@@ -69,6 +71,16 @@ export const App: React.FC = () => {
   const [showNewFolderModal, setShowNewFolderModal] = useState(false);
   const [shareTarget, setShareTarget] = useState<{ item: FolderItem | FileItem; type: "file" | "folder" } | null>(null);
   const [versionTarget, setVersionTarget] = useState<FileItem | null>(null);
+  const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
+  const [moveModalState, setMoveModalState] = useState<{
+    isOpen: boolean;
+    item: FileItem | FolderItem | { ids: string[]; count: number } | null;
+    type: "file" | "folder" | "bulk_files";
+  }>({
+    isOpen: false,
+    item: null,
+    type: "file"
+  });
 
   // Drag & Drop File Upload State
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -284,6 +296,51 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleRenameFile = async (file: FileItem) => {
+    const newName = prompt("Enter new file name:", file.name);
+    if (!newName || newName === file.name) return;
+    try {
+      await api.renameFile(file._id, newName);
+      refreshContent();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Rename failed");
+    }
+  };
+
+  const handleMoveFile = (file: FileItem) => {
+    setMoveModalState({
+      isOpen: true,
+      item: file,
+      type: "file"
+    });
+  };
+
+  const handleMoveFolder = (folder: FolderItem) => {
+    setMoveModalState({
+      isOpen: true,
+      item: folder,
+      type: "folder"
+    });
+  };
+
+  const handleBulkMoveFiles = (fileIds: string[]) => {
+    setMoveModalState({
+      isOpen: true,
+      item: { ids: fileIds, count: fileIds.length },
+      type: "bulk_files"
+    });
+  };
+
+  const handleBulkDeleteFiles = async (fileIds: string[]) => {
+    if (!confirm(`Are you sure you want to move ${fileIds.length} files to trash?`)) return;
+    try {
+      await Promise.all(fileIds.map((id) => api.deleteFile(id, false)));
+      refreshContent();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Bulk delete failed");
+    }
+  };
+
   const handleSelectEmail = async (item: SecurityNotificationItem) => {
     setActiveEmailToView(item);
     if (!item.isRead) {
@@ -367,6 +424,7 @@ export const App: React.FC = () => {
                     onOpenFolder={(fId) => setCurrentFolderId(fId)}
                     onShare={(folder) => setShareTarget({ item: folder, type: "folder" })}
                     onRename={handleRenameFolder}
+                    onMove={handleMoveFolder}
                     onDelete={handleDeleteFolder}
                   />
 
@@ -376,6 +434,11 @@ export const App: React.FC = () => {
                     onOpenVersions={(file) => setVersionTarget(file)}
                     onShare={(file) => setShareTarget({ item: file, type: "file" })}
                     onDelete={handleDeleteFile}
+                    onRename={handleRenameFile}
+                    onMove={handleMoveFile}
+                    onPreview={(file) => setPreviewFile(file)}
+                    onBulkMove={handleBulkMoveFiles}
+                    onBulkDelete={handleBulkDeleteFiles}
                     onOpenUpload={() => setShowUploadModal(true)}
                   />
                 </>
@@ -401,6 +464,7 @@ export const App: React.FC = () => {
                   }}
                   onShare={(folder) => setShareTarget({ item: folder, type: "folder" })}
                   onRename={handleRenameFolder}
+                  onMove={handleMoveFolder}
                   onDelete={handleDeleteFolder}
                 />
               )}
@@ -411,6 +475,11 @@ export const App: React.FC = () => {
                 onOpenVersions={(file) => setVersionTarget(file)}
                 onShare={(file) => setShareTarget({ item: file, type: "file" })}
                 onDelete={handleDeleteFile}
+                onRename={handleRenameFile}
+                onMove={handleMoveFile}
+                onPreview={(file) => setPreviewFile(file)}
+                onBulkMove={handleBulkMoveFiles}
+                onBulkDelete={handleBulkDeleteFiles}
               />
             </div>
           )}
@@ -542,6 +611,26 @@ export const App: React.FC = () => {
           file={versionTarget}
           onClose={() => setVersionTarget(null)}
           onRefresh={refreshContent}
+        />
+      )}
+
+      {/* File Preview Lightbox Modal */}
+      {previewFile && (
+        <FilePreviewModal
+          file={previewFile}
+          onClose={() => setPreviewFile(null)}
+          onDownload={handleDownload}
+        />
+      )}
+
+      {/* Destination Folder Picker Move Modal */}
+      {moveModalState.isOpen && (
+        <MoveModal
+          isOpen={moveModalState.isOpen}
+          item={moveModalState.item}
+          type={moveModalState.type}
+          onClose={() => setMoveModalState({ isOpen: false, item: null, type: "file" })}
+          onSuccess={refreshContent}
         />
       )}
 

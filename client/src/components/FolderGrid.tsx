@@ -1,5 +1,5 @@
 import React from "react";
-import { Folder as FolderIcon, MoreVertical, Share2, Edit2, Trash2, Users } from "lucide-react";
+import { Folder as FolderIcon, MoreVertical, Share2, Edit2, Trash2, Users, FolderInput } from "lucide-react";
 import { FolderItem } from "../types";
 
 interface FolderGridProps {
@@ -7,6 +7,7 @@ interface FolderGridProps {
   onOpenFolder: (folderId: string) => void;
   onShare: (folder: FolderItem) => void;
   onRename: (folder: FolderItem) => void;
+  onMove?: (folder: FolderItem) => void;
   onDelete: (folderId: string) => void;
 }
 
@@ -15,6 +16,7 @@ export const FolderGrid: React.FC<FolderGridProps> = ({
   onOpenFolder,
   onShare,
   onRename,
+  onMove,
   onDelete
 }) => {
   const [activeMenuId, setActiveMenuId] = React.useState<string | null>(null);
@@ -186,6 +188,32 @@ export const FolderGrid: React.FC<FolderGridProps> = ({
                       <Edit2 size={14} />
                       Rename
                     </button>
+                    {onMove && (
+                      <button
+                        style={{
+                          width: "100%",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          padding: "8px 10px",
+                          background: "none",
+                          border: "none",
+                          color: "var(--text-primary)",
+                          fontSize: "13px",
+                          borderRadius: "var(--radius-sm)",
+                          cursor: "pointer",
+                          textAlign: "left"
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenuId(null);
+                          onMove(folder);
+                        }}
+                      >
+                        <FolderInput size={14} />
+                        Move
+                      </button>
+                    )}
                     <button
                       style={{
                         width: "100%",

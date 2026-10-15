@@ -13,6 +13,7 @@ const router = Router();
 router.use(authenticate);
 
 router.post("/", validate(createFolderSchema), FolderController.create);
+router.get("/all", FolderController.getAll);
 router.get("/", FolderController.list);
 router.patch("/:id/rename", validate(renameFolderSchema), FolderController.rename);
 router.patch("/:id/move", validate(moveFolderSchema), FolderController.move);

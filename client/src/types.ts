@@ -70,6 +70,13 @@ export interface FolderItem {
   updatedAt: string;
 }
 
+export interface FolderSummaryItem {
+  _id: string;
+  name: string;
+  parentId: string | null;
+  ancestors: string[];
+}
+
 export interface FileVersion {
   versionNumber: number;
   storageKey: string;

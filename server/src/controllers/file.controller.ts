@@ -76,10 +76,11 @@ export class FileController {
         ipAddress: req.ip
       });
 
+      const isInline = req.query.inline === "true";
       res.setHeader("Content-Type", downloadData.mimeType);
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="${encodeURIComponent(downloadData.filename)}"`
+        `${isInline ? "inline" : "attachment"}; filename="${encodeURIComponent(downloadData.filename)}"`
       );
 
       if (downloadData.range) {

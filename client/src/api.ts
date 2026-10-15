@@ -6,7 +6,8 @@ import {
   FileItem,
   AuthSuccessResult,
   SecurityNotificationItem,
-  UserProfileSummary
+  UserProfileSummary,
+  FolderSummaryItem
 } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "/api";
@@ -143,6 +144,13 @@ export const api = {
     return handleResponse(res);
   },
 
+  async getAllFolders(): Promise<FolderSummaryItem[]> {
+    const res = await fetch(`${API_BASE}/folders/all`, {
+      headers: getHeaders()
+    });
+    return handleResponse(res);
+  },
+
   async deleteFolder(folderId: string, permanent: boolean = false): Promise<void> {
     const res = await fetch(`${API_BASE}/folders/${folderId}?permanent=${permanent}`, {
       method: "DELETE",
@@ -169,6 +177,12 @@ export const api = {
     const token = getAuthToken();
     const query = versionNumber ? `?version=${versionNumber}` : "";
     return `${API_BASE}/files/${fileId}/download${query}${query ? "&" : "?"}token=${token}`;
+  },
+
+  getPreviewUrl(fileId: string, versionNumber?: number): string {
+    const token = getAuthToken();
+    const query = versionNumber ? `version=${versionNumber}&` : "";
+    return `${API_BASE}/files/${fileId}/download?${query}inline=true&token=${token}`;
   },
 
   async downloadFile(fileId: string, filename: string, versionNumber?: number): Promise<void> {

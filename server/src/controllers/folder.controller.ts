@@ -84,6 +84,22 @@ export class FolderController {
     }
   }
 
+  public static async getAll(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, message: "Unauthorized" });
+        return;
+      }
+      const folders = await FolderService.getAllFolders(req.user._id);
+      res.status(200).json({
+        success: true,
+        data: folders
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   public static async rename(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user) {

@@ -429,4 +429,21 @@ export class FolderService {
 
     return { deleted: true };
   }
+
+  public static async getAllFolders(userId: Types.ObjectId) {
+    const folders = await Folder.find({
+      $or: [{ ownerId: userId }, { "sharedWith.userId": userId }],
+      isTrash: false
+    })
+      .select("_id name parentId ancestors")
+      .sort({ name: 1 })
+      .lean();
+
+    return folders.map((f) => ({
+      _id: f._id.toString(),
+      name: f.name,
+      parentId: f.parentId ? f.parentId.toString() : null,
+      ancestors: (f.ancestors || []).map((a) => a.toString())
+    }));
+  }
 }
