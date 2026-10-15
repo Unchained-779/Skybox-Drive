@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Mail, X } from "lucide-react";
+import { Mail, X, UploadCloud, CheckCircle2, AlertCircle } from "lucide-react";
 import { Sidebar } from "./components/Sidebar";
 import { Navbar } from "./components/Navbar";
 import { Breadcrumbs } from "./components/Breadcrumbs";
@@ -69,6 +69,10 @@ export const App: React.FC = () => {
   const [shareTarget, setShareTarget] = useState<{ item: FolderItem | FileItem; type: "file" | "folder" } | null>(null);
   const [versionTarget, setVersionTarget] = useState<FileItem | null>(null);
 
+  // Drag & Drop File Upload State
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [uploadToast, setUploadToast] = useState<{ message: string; type: "loading" | "success" | "error" } | null>(null);
+
   // Fetch Notifications
   const fetchNotifications = useCallback(async () => {
     try {
@@ -137,6 +141,94 @@ export const App: React.FC = () => {
   useEffect(() => {
     refreshContent();
   }, [refreshContent]);
+
+  // Global Drag & Drop Handler for Instant Google Drive-style File Uploads
+  useEffect(() => {
+    if (!user) return;
+
+    let dragCounter = 0;
+
+    const handleDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter++;
+      if (e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes("Files")) {
+        setIsDraggingOver(true);
+      }
+    };
+
+    const handleDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter--;
+      if (dragCounter <= 0) {
+        setIsDraggingOver(false);
+        dragCounter = 0;
+      }
+    };
+
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    const handleDrop = async (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDraggingOver(false);
+      dragCounter = 0;
+
+      if (!e.dataTransfer || !e.dataTransfer.files || e.dataTransfer.files.length === 0) {
+        return;
+      }
+
+      if (currentTab === "trash") {
+        alert("Cannot upload files into Trash. Please switch to My Drive.");
+        return;
+      }
+
+      const filesToUpload = Array.from(e.dataTransfer.files);
+      const totalCount = filesToUpload.length;
+      const targetLocation = folderData?.currentFolder ? folderData.currentFolder.name : "My Drive";
+
+      setUploadToast({
+        message: `Uploading ${totalCount} file${totalCount > 1 ? "s" : ""} to ${targetLocation}...`,
+        type: "loading"
+      });
+
+      try {
+        let uploaded = 0;
+        for (const f of filesToUpload) {
+          await api.uploadFile(f, currentFolderId);
+          uploaded++;
+        }
+        await refreshContent();
+        setUploadToast({
+          message: `Successfully uploaded ${uploaded} file${uploaded > 1 ? "s" : ""} to ${targetLocation}!`,
+          type: "success"
+        });
+        setTimeout(() => setUploadToast(null), 4000);
+      } catch (err: unknown) {
+        setUploadToast({
+          message: err instanceof Error ? err.message : "Upload failed",
+          type: "error"
+        });
+        setTimeout(() => setUploadToast(null), 5000);
+      }
+    };
+
+    window.addEventListener("dragenter", handleDragEnter);
+    window.addEventListener("dragleave", handleDragLeave);
+    window.addEventListener("dragover", handleDragOver);
+    window.addEventListener("drop", handleDrop);
+
+    return () => {
+      window.removeEventListener("dragenter", handleDragEnter);
+      window.removeEventListener("dragleave", handleDragLeave);
+      window.removeEventListener("dragover", handleDragOver);
+      window.removeEventListener("drop", handleDrop);
+    };
+  }, [user, currentTab, currentFolderId, folderData, refreshContent]);
 
   const handleLogout = () => {
     removeAuthToken();
@@ -273,6 +365,7 @@ export const App: React.FC = () => {
                     onOpenVersions={(file) => setVersionTarget(file)}
                     onShare={(file) => setShareTarget({ item: file, type: "file" })}
                     onDelete={handleDeleteFile}
+                    onOpenUpload={() => setShowUploadModal(true)}
                   />
                 </>
               )}
@@ -439,6 +532,109 @@ export const App: React.FC = () => {
           onClose={() => setVersionTarget(null)}
           onRefresh={refreshContent}
         />
+      )}
+
+      {/* Fullscreen Google Drive-style Drag & Drop Overlay */}
+      {isDraggingOver && user && currentTab !== "trash" && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(11, 17, 32, 0.85)",
+            backdropFilter: "blur(8px)",
+            zIndex: 9999,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            pointerEvents: "none"
+          }}
+        >
+          <div
+            style={{
+              padding: "48px 64px",
+              borderRadius: "24px",
+              border: "3px dashed var(--accent-blue)",
+              backgroundColor: "rgba(20, 30, 51, 0.95)",
+              boxShadow: "0 0 60px rgba(59, 130, 246, 0.4)",
+              textAlign: "center",
+              transform: "scale(1.05)",
+              transition: "all 0.2s ease"
+            }}
+          >
+            <div
+              style={{
+                width: "84px",
+                height: "84px",
+                borderRadius: "50%",
+                backgroundColor: "rgba(59, 130, 246, 0.15)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 20px"
+              }}
+            >
+              <UploadCloud size={46} color="var(--accent-blue)" />
+            </div>
+            <h2 style={{ fontSize: "24px", fontWeight: 700, color: "#ffffff", marginBottom: "8px" }}>
+              Drop files to upload
+            </h2>
+            <p style={{ fontSize: "15px", color: "var(--text-secondary)" }}>
+              Upload to{" "}
+              <strong style={{ color: "var(--accent-blue)" }}>
+                {folderData?.currentFolder ? folderData.currentFolder.name : "My Drive"}
+              </strong>
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Upload Progress & Success Toast */}
+      {uploadToast && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: "28px",
+            right: "28px",
+            backgroundColor:
+              uploadToast.type === "error"
+                ? "rgba(239, 68, 68, 0.95)"
+                : uploadToast.type === "success"
+                ? "rgba(16, 185, 129, 0.95)"
+                : "rgba(30, 41, 59, 0.95)",
+            color: "#ffffff",
+            padding: "14px 20px",
+            borderRadius: "12px",
+            boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            zIndex: 9998,
+            fontSize: "14px",
+            fontWeight: 500,
+            backdropFilter: "blur(8px)",
+            border: "1px solid rgba(255,255,255,0.1)"
+          }}
+        >
+          {uploadToast.type === "loading" && (
+            <div
+              style={{
+                width: "18px",
+                height: "18px",
+                border: "2px solid rgba(255,255,255,0.3)",
+                borderTopColor: "#ffffff",
+                borderRadius: "50%",
+                animation: "spin 1s linear infinite"
+              }}
+            />
+          )}
+          {uploadToast.type === "success" && <CheckCircle2 size={18} color="#ffffff" />}
+          {uploadToast.type === "error" && <AlertCircle size={18} color="#ffffff" />}
+          <span>{uploadToast.message}</span>
+        </div>
       )}
     </div>
   );

@@ -20,6 +20,7 @@ interface FileListProps {
   onOpenVersions: (file: FileItem) => void;
   onShare: (file: FileItem) => void;
   onDelete: (fileId: string) => void;
+  onOpenUpload?: () => void;
 }
 
 const formatBytes = (bytes: number): string => {
@@ -47,18 +48,22 @@ export const FileList: React.FC<FileListProps> = ({
   onDownload,
   onOpenVersions,
   onShare,
-  onDelete
+  onDelete,
+  onOpenUpload
 }) => {
   if (files.length === 0) {
     return (
       <div
+        onClick={onOpenUpload}
         style={{
           padding: "48px 16px",
           textAlign: "center",
           color: "var(--text-muted)",
           backgroundColor: "rgba(20, 30, 51, 0.4)",
           borderRadius: "var(--radius-lg)",
-          border: "1px dashed var(--border-color)"
+          border: "2px dashed var(--border-color)",
+          cursor: onOpenUpload ? "pointer" : "default",
+          transition: "all 0.2s ease"
         }}
       >
         <GenericFile size={40} style={{ margin: "0 auto 12px", opacity: 0.5 }} />
@@ -66,7 +71,7 @@ export const FileList: React.FC<FileListProps> = ({
           No files in this folder
         </p>
         <p style={{ fontSize: "13px", marginTop: "4px" }}>
-          Upload files or drag and drop them here to get started.
+          Click to upload or drag & drop files anywhere on the page
         </p>
       </div>
     );

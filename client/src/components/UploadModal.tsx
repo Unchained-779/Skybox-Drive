@@ -10,6 +10,7 @@ interface UploadModalProps {
 
 export const UploadModal: React.FC<UploadModalProps> = ({ currentFolderId, onClose, onRefresh }) => {
   const [file, setFile] = useState<File | null>(null);
+  const [isDragHover, setIsDragHover] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,14 +73,33 @@ export const UploadModal: React.FC<UploadModalProps> = ({ currentFolderId, onClo
           <div
             style={{
               padding: "36px 16px",
-              border: "2px dashed var(--border-color)",
+              border: `2px dashed ${isDragHover ? "var(--accent-blue)" : "var(--border-color)"}`,
               borderRadius: "var(--radius-md)",
               textAlign: "center",
-              backgroundColor: "var(--bg-card)",
+              backgroundColor: isDragHover ? "rgba(59, 130, 246, 0.1)" : "var(--bg-card)",
               marginBottom: "20px",
-              cursor: "pointer"
+              cursor: "pointer",
+              transition: "all 0.2s ease"
             }}
             onClick={() => document.getElementById("file-input")?.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragHover(true);
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragHover(false);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragHover(false);
+              if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                setFile(e.dataTransfer.files[0]);
+              }
+            }}
           >
             <UploadCloud size={36} color="var(--accent-blue)" style={{ margin: "0 auto 10px" }} />
             <p style={{ fontSize: "14px", fontWeight: 600 }}>
