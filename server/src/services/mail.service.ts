@@ -16,6 +16,13 @@ export class MailService {
   private static transporter: Transporter | null = null;
 
   private static async getTransporter(): Promise<Transporter> {
+    if (process.env.NODE_ENV === "test") {
+      this.transporter = nodemailer.createTransport({
+        jsonTransport: true
+      });
+      return this.transporter;
+    }
+
     if (!this.transporter) {
       // Check if SMTP environment variables exist
       const host = process.env.SMTP_HOST;
