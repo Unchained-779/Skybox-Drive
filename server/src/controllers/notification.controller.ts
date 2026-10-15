@@ -14,14 +14,16 @@ export class NotificationController {
         return;
       }
 
+      const userEmail = req.user.email.toLowerCase();
+
       const notifications = await SecurityNotification.find({
-        userId: req.user._id
+        to: userEmail
       })
         .sort({ createdAt: -1 })
         .limit(20);
 
       const unreadCount = await SecurityNotification.countDocuments({
-        userId: req.user._id,
+        to: userEmail,
         isRead: false
       });
 
@@ -49,8 +51,9 @@ export class NotificationController {
       }
 
       const { id } = req.params;
+      const userEmail = req.user.email.toLowerCase();
       const notification = await SecurityNotification.findOneAndUpdate(
-        { _id: id, userId: req.user._id },
+        { _id: id, to: userEmail },
         { isRead: true },
         { new: true }
       );

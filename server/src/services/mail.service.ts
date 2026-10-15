@@ -188,7 +188,7 @@ export class MailService {
   }
 
   public static async sendShareInvitationEmail(params: {
-    userId: mongoose.Types.ObjectId;
+    userId?: mongoose.Types.ObjectId;
     to: string;
     inviterName: string;
     inviterEmail: string;

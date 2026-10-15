@@ -290,7 +290,7 @@ export class ShareService {
     const shareUrl = `${baseOrigin}/share/${link.token}`;
 
     const notification = await MailService.sendShareInvitationEmail({
-      userId: params.userId,
+      userId: existingUser ? (existingUser._id as Types.ObjectId) : undefined,
       to: targetEmail,
       inviterName: inviter.name,
       inviterEmail: inviter.email,
