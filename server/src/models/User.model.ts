@@ -11,6 +11,8 @@ export interface IUser extends Document {
   authProvider: "local" | "google";
   storageQuota: number;
   usedStorage: number;
+  loginCount: number;
+  lastLoginAt?: Date;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -58,6 +60,14 @@ const userSchema = new Schema<IUser>(
       type: Number,
       default: 0,
       min: 0
+    },
+    loginCount: {
+      type: Number,
+      default: 0
+    },
+    lastLoginAt: {
+      type: Date,
+      default: null
     }
   },
   {

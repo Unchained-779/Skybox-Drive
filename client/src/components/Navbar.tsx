@@ -1,10 +1,12 @@
 import React from "react";
-import { Search, LogOut, User as UserIcon } from "lucide-react";
+import { Search, LogOut, User as UserIcon, Bell } from "lucide-react";
 import { User } from "../types";
 
 interface NavbarProps {
   user: User | null;
   searchQuery: string;
+  unreadNotificationsCount?: number;
+  onOpenNotifications?: () => void;
   onSearchChange: (query: string) => void;
   onLogout: () => void;
 }
@@ -12,6 +14,8 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({
   user,
   searchQuery,
+  unreadNotificationsCount = 0,
+  onOpenNotifications,
   onSearchChange,
   onLogout
 }) => {
@@ -93,10 +97,47 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
               <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{user.email}</span>
             </div>
+
+            {/* Security Alerts / Emails Bell */}
+            <button
+              onClick={onOpenNotifications}
+              className="btn btn-secondary"
+              style={{
+                position: "relative",
+                padding: "8px 12px",
+                marginLeft: "4px"
+              }}
+              title="Security Alerts & Emails"
+            >
+              <Bell size={16} />
+              {unreadNotificationsCount > 0 && (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: "-4px",
+                    right: "-4px",
+                    width: "18px",
+                    height: "18px",
+                    borderRadius: "50%",
+                    backgroundColor: "var(--accent-red)",
+                    color: "#ffffff",
+                    fontSize: "10px",
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 2px 6px rgba(239, 68, 68, 0.5)"
+                  }}
+                >
+                  {unreadNotificationsCount}
+                </span>
+              )}
+            </button>
+
             <button
               onClick={onLogout}
               className="btn btn-secondary"
-              style={{ padding: "8px 12px", marginLeft: "8px" }}
+              style={{ padding: "8px 12px", marginLeft: "4px" }}
               title="Log out"
             >
               <LogOut size={16} />

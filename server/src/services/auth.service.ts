@@ -4,6 +4,7 @@ import { User, IUser } from "../models/User.model";
 import { AuditLog } from "../models/AuditLog.model";
 import { env } from "../config/env";
 import { ConflictError, UnauthorizedError, NotFoundError } from "../utils/errors";
+import { MailService } from "./mail.service";
 
 export interface RegisterDTO {
   email: string;
@@ -16,6 +17,15 @@ export interface LoginDTO {
   password: string;
 }
 
+export interface WelcomeEmailData {
+  id: string;
+  to: string;
+  subject: string;
+  htmlContent: string;
+  previewUrl?: string;
+  createdAt: Date;
+}
+
 export interface AuthResponse {
   user: {
     id: string;
@@ -24,9 +34,12 @@ export interface AuthResponse {
     avatar?: string;
     storageQuota: number;
     usedStorage: number;
+    loginCount: number;
     createdAt: Date;
   };
   token: string;
+  isFirstLogin?: boolean;
+  welcomeEmail?: WelcomeEmailData;
 }
 
 export class AuthService {
@@ -55,7 +68,9 @@ export class AuthService {
       name: dto.name,
       authProvider: "local",
       storageQuota: env.DEFAULT_USER_QUOTA,
-      usedStorage: 0
+      usedStorage: 0,
+      loginCount: 1,
+      lastLoginAt: new Date()
     });
 
     const token = this.generateToken(user);
@@ -68,6 +83,28 @@ export class AuthService {
       ipAddress
     });
 
+    let welcomeEmailData: WelcomeEmailData | undefined;
+    try {
+      const emailNotice = await MailService.sendWelcomeSecurityAlert({
+        userId: user._id,
+        to: user.email,
+        name: user.name,
+        authProvider: "local",
+        isFirstLogin: true,
+        ipAddress
+      });
+      welcomeEmailData = {
+        id: emailNotice._id.toString(),
+        to: emailNotice.to,
+        subject: emailNotice.subject,
+        htmlContent: emailNotice.htmlContent,
+        previewUrl: emailNotice.previewUrl,
+        createdAt: emailNotice.createdAt
+      };
+    } catch (e) {
+      console.warn("Mail service dispatch error on register:", e);
+    }
+
     return {
       user: {
         id: user._id.toString(),
@@ -76,9 +113,12 @@ export class AuthService {
         avatar: user.avatar,
         storageQuota: user.storageQuota,
         usedStorage: user.usedStorage,
+        loginCount: user.loginCount || 1,
         createdAt: user.createdAt
       },
-      token
+      token,
+      isFirstLogin: true,
+      welcomeEmail: welcomeEmailData
     };
   }
 
@@ -97,6 +137,11 @@ export class AuthService {
       throw new UnauthorizedError("Invalid email or password.");
     }
 
+    const isFirstLogin = (user.loginCount || 0) === 0;
+    user.loginCount = (user.loginCount || 0) + 1;
+    user.lastLoginAt = new Date();
+    await user.save();
+
     const token = this.generateToken(user);
 
     await AuditLog.create({
@@ -107,6 +152,28 @@ export class AuthService {
       ipAddress
     });
 
+    let welcomeEmailData: WelcomeEmailData | undefined;
+    try {
+      const emailNotice = await MailService.sendWelcomeSecurityAlert({
+        userId: user._id,
+        to: user.email,
+        name: user.name,
+        authProvider: "local",
+        isFirstLogin,
+        ipAddress
+      });
+      welcomeEmailData = {
+        id: emailNotice._id.toString(),
+        to: emailNotice.to,
+        subject: emailNotice.subject,
+        htmlContent: emailNotice.htmlContent,
+        previewUrl: emailNotice.previewUrl,
+        createdAt: emailNotice.createdAt
+      };
+    } catch (e) {
+      console.warn("Mail service dispatch error on login:", e);
+    }
+
     return {
       user: {
         id: user._id.toString(),
@@ -115,9 +182,12 @@ export class AuthService {
         avatar: user.avatar,
         storageQuota: user.storageQuota,
         usedStorage: user.usedStorage,
+        loginCount: user.loginCount,
         createdAt: user.createdAt
       },
-      token
+      token,
+      isFirstLogin,
+      welcomeEmail: welcomeEmailData
     };
   }
 
@@ -167,8 +237,12 @@ export class AuthService {
     }
 
     let user = await User.findOne({ email: googleEmail.toLowerCase() });
+    let isFirstLogin = false;
 
     if (user) {
+      isFirstLogin = (user.loginCount || 0) === 0;
+      user.loginCount = (user.loginCount || 0) + 1;
+      user.lastLoginAt = new Date();
       if (!user.googleId && googleSub) {
         user.googleId = googleSub;
       }
@@ -177,6 +251,7 @@ export class AuthService {
       }
       await user.save();
     } else {
+      isFirstLogin = true;
       user = await User.create({
         email: googleEmail.toLowerCase(),
         name: googleName || "Google User",
@@ -184,7 +259,9 @@ export class AuthService {
         avatar: googlePicture,
         authProvider: "google",
         storageQuota: env.DEFAULT_USER_QUOTA,
-        usedStorage: 0
+        usedStorage: 0,
+        loginCount: 1,
+        lastLoginAt: new Date()
       });
     }
 
@@ -198,6 +275,28 @@ export class AuthService {
       ipAddress
     });
 
+    let welcomeEmailData: WelcomeEmailData | undefined;
+    try {
+      const emailNotice = await MailService.sendWelcomeSecurityAlert({
+        userId: user._id,
+        to: user.email,
+        name: user.name,
+        authProvider: "google",
+        isFirstLogin,
+        ipAddress
+      });
+      welcomeEmailData = {
+        id: emailNotice._id.toString(),
+        to: emailNotice.to,
+        subject: emailNotice.subject,
+        htmlContent: emailNotice.htmlContent,
+        previewUrl: emailNotice.previewUrl,
+        createdAt: emailNotice.createdAt
+      };
+    } catch (e) {
+      console.warn("Mail service dispatch error on google auth:", e);
+    }
+
     return {
       user: {
         id: user._id.toString(),
@@ -206,9 +305,12 @@ export class AuthService {
         avatar: user.avatar,
         storageQuota: user.storageQuota,
         usedStorage: user.usedStorage,
+        loginCount: user.loginCount,
         createdAt: user.createdAt
       },
-      token
+      token,
+      isFirstLogin,
+      welcomeEmail: welcomeEmailData
     };
   }
 
@@ -225,6 +327,7 @@ export class AuthService {
       avatar: user.avatar,
       storageQuota: user.storageQuota,
       usedStorage: user.usedStorage,
+      loginCount: user.loginCount || 0,
       createdAt: user.createdAt
     };
   }

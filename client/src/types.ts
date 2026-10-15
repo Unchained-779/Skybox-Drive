@@ -6,6 +6,40 @@ export interface User {
   authProvider?: "local" | "google";
   storageQuota: number;
   usedStorage: number;
+  loginCount?: number;
+}
+
+export interface WelcomeEmail {
+  id: string;
+  to: string;
+  subject: string;
+  htmlContent: string;
+  previewUrl?: string;
+  createdAt: string;
+}
+
+export interface SecurityNotificationItem {
+  _id: string;
+  to: string;
+  subject: string;
+  htmlContent: string;
+  type: "welcome_first_login" | "security_alert" | "share_notice";
+  previewUrl?: string;
+  isRead: boolean;
+  metadata?: {
+    authProvider?: string;
+    ipAddress?: string;
+    userAgent?: string;
+    timestamp?: string;
+  };
+  createdAt: string;
+}
+
+export interface AuthSuccessResult {
+  user: User;
+  token: string;
+  isFirstLogin?: boolean;
+  welcomeEmail?: WelcomeEmail;
 }
 
 export interface Breadcrumb {

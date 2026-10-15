@@ -3,7 +3,9 @@ import {
   StorageStats,
   FolderContentsResponse,
   FolderItem,
-  FileItem
+  FileItem,
+  AuthSuccessResult,
+  SecurityNotificationItem
 } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000/api";
@@ -45,7 +47,7 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
 
 export const api = {
   // Auth
-  async login(email: string, password: string): Promise<{ user: User; token: string }> {
+  async login(email: string, password: string): Promise<AuthSuccessResult> {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -54,7 +56,7 @@ export const api = {
     return handleResponse(res);
   },
 
-  async register(name: string, email: string, password: string): Promise<{ user: User; token: string }> {
+  async register(name: string, email: string, password: string): Promise<AuthSuccessResult> {
     const res = await fetch(`${API_BASE}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -63,7 +65,7 @@ export const api = {
     return handleResponse(res);
   },
 
-  async loginWithGoogle(credential: string): Promise<{ user: User; token: string }> {
+  async loginWithGoogle(credential: string): Promise<AuthSuccessResult> {
     const res = await fetch(`${API_BASE}/auth/google`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -290,6 +292,22 @@ export const api = {
   async emptyTrash(): Promise<void> {
     const res = await fetch(`${API_BASE}/trash/empty`, {
       method: "DELETE",
+      headers: getHeaders()
+    });
+    return handleResponse(res);
+  },
+
+  // Security Notifications & Emails
+  async getNotifications(): Promise<{ notifications: SecurityNotificationItem[]; unreadCount: number }> {
+    const res = await fetch(`${API_BASE}/notifications`, {
+      headers: getHeaders()
+    });
+    return handleResponse(res);
+  },
+
+  async markNotificationRead(id: string): Promise<SecurityNotificationItem> {
+    const res = await fetch(`${API_BASE}/notifications/${id}/read`, {
+      method: "PATCH",
       headers: getHeaders()
     });
     return handleResponse(res);
