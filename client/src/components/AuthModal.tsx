@@ -116,7 +116,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
               if (res.credential) {
                 handleGoogleTokenLogin(res.credential);
               }
-            }
+            },
+            auto_select: false,
+            itp_support: true,
+            ux_mode: "popup"
           });
 
           const loginEl = document.getElementById("native-google-btn-login");

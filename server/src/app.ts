@@ -16,7 +16,8 @@ export const createApp = (): Application => {
   // Security headers
   app.use(
     helmet({
-      contentSecurityPolicy: false // Allow Swagger UI inline scripts & styles
+      contentSecurityPolicy: false, // Allow Swagger UI inline scripts & styles
+      crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
     })
   );
 
