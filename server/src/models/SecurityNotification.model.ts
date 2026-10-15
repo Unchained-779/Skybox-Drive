@@ -5,7 +5,7 @@ export interface ISecurityNotification extends Document {
   to: string;
   subject: string;
   htmlContent: string;
-  type: "welcome_first_login" | "security_alert" | "share_notice";
+  type: "welcome_first_login" | "security_alert" | "share_notice" | "share_invite";
   previewUrl?: string;
   isRead: boolean;
   metadata?: Record<string, unknown>;
@@ -37,7 +37,7 @@ const securityNotificationSchema = new Schema<ISecurityNotification>(
     },
     type: {
       type: String,
-      enum: ["welcome_first_login", "security_alert", "share_notice"],
+      enum: ["welcome_first_login", "security_alert", "share_notice", "share_invite"],
       default: "welcome_first_login"
     },
     previewUrl: {

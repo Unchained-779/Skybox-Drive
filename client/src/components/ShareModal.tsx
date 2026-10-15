@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, UserPlus, Link2, Check, Trash2, Users } from "lucide-react";
+import { X, UserPlus, Link2, Check, Trash2, Users, Mail } from "lucide-react";
 import { FolderItem, FileItem } from "../types";
 import { api } from "../api";
 
@@ -15,6 +15,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({ item, type, onClose, onR
   const [role, setRole] = useState<"viewer" | "editor">("viewer");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unregisteredEmail, setUnregisteredEmail] = useState<string | null>(null);
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -24,12 +26,35 @@ export const ShareModal: React.FC<ShareModalProps> = ({ item, type, onClose, onR
 
     setLoading(true);
     setError(null);
+    setUnregisteredEmail(null);
+    setInviteSuccess(null);
     try {
       await api.shareResource(type, item._id, email, role);
       setEmail("");
       onRefresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to share resource");
+      const msg = err instanceof Error ? err.message : "Failed to share resource";
+      setError(msg);
+      if (msg.includes("does not exist on Skybox Drive")) {
+        setUnregisteredEmail(email);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendInvite = async () => {
+    if (!unregisteredEmail) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.inviteByEmail(type, item._id, unregisteredEmail, role);
+      setInviteSuccess(unregisteredEmail);
+      setShareLink(res.shareUrl);
+      setUnregisteredEmail(null);
+      setEmail("");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to send invitation email");
     } finally {
       setLoading(false);
     }
@@ -87,10 +112,31 @@ export const ShareModal: React.FC<ShareModalProps> = ({ item, type, onClose, onR
           </button>
         </div>
 
+        {inviteSuccess && (
+          <div
+            style={{
+              padding: "12px 14px",
+              backgroundColor: "rgba(52, 211, 153, 0.15)",
+              color: "#34d399",
+              borderRadius: "var(--radius-sm)",
+              fontSize: "13px",
+              marginBottom: "16px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px"
+            }}
+          >
+            <Check size={16} />
+            <span>
+              Invitation email sent to <strong>{inviteSuccess}</strong>! A secure share link was created.
+            </span>
+          </div>
+        )}
+
         {error && (
           <div
             style={{
-              padding: "10px 14px",
+              padding: "12px 14px",
               backgroundColor: "rgba(239, 68, 68, 0.15)",
               color: "#f87171",
               borderRadius: "var(--radius-sm)",
@@ -98,7 +144,34 @@ export const ShareModal: React.FC<ShareModalProps> = ({ item, type, onClose, onR
               marginBottom: "16px"
             }}
           >
-            {error}
+            <div>{error}</div>
+            {unregisteredEmail && (
+              <div
+                style={{
+                  marginTop: "10px",
+                  paddingTop: "10px",
+                  borderTop: "1px solid rgba(239, 68, 68, 0.25)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "10px"
+                }}
+              >
+                <span style={{ fontSize: "12px", color: "var(--text-primary)" }}>
+                  Send an email invitation with a secure link?
+                </span>
+                <button
+                  type="button"
+                  onClick={handleSendInvite}
+                  className="btn btn-primary"
+                  style={{ padding: "6px 12px", fontSize: "12px", flexShrink: 0 }}
+                  disabled={loading}
+                >
+                  <Mail size={13} />
+                  Send Email Invite
+                </button>
+              </div>
+            )}
           </div>
         )}
 

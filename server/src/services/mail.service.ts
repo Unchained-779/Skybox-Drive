@@ -186,4 +186,114 @@ export class MailService {
 
     return notification;
   }
+
+  public static async sendShareInvitationEmail(params: {
+    userId: mongoose.Types.ObjectId;
+    to: string;
+    inviterName: string;
+    inviterEmail: string;
+    resourceName: string;
+    resourceType: "file" | "folder";
+    role: "viewer" | "editor";
+    shareUrl: string;
+  }): Promise<ISecurityNotification> {
+    const { userId, to, inviterName, inviterEmail, resourceName, resourceType, role, shareUrl } = params;
+
+    const subject = `📁 ${inviterName} shared "${resourceName}" with you on Skybox Drive`;
+    const timestamp = new Date().toUTCString();
+
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0b1120; color: #f8fafc; margin: 0; padding: 24px; }
+    .card { max-width: 540px; margin: 0 auto; background: #141e33; border: 1px solid #24324a; border-radius: 12px; padding: 28px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    .logo { font-size: 20px; font-weight: 800; color: #3b82f6; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+    .header { font-size: 18px; font-weight: 700; color: #ffffff; margin-bottom: 12px; }
+    .lead { font-size: 14px; color: #94a3b8; line-height: 1.6; margin-bottom: 20px; }
+    .file-box { background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 16px; margin-bottom: 24px; }
+    .file-name { font-size: 16px; font-weight: 700; color: #38bdf8; margin-bottom: 4px; }
+    .file-meta { font-size: 13px; color: #64748b; }
+    .btn { display: inline-block; background-color: #2563eb; color: #ffffff !important; font-weight: 600; font-size: 14px; padding: 12px 24px; border-radius: 6px; text-decoration: none; text-align: center; }
+    .footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid #1e293b; font-size: 12px; color: #64748b; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <span>☁️ Skybox Drive</span>
+    </div>
+    <div class="header">Document Shared with You</div>
+    <p class="lead">
+      <strong>${inviterName}</strong> (<a href="mailto:${inviterEmail}" style="color: #60a5fa;">${inviterEmail}</a>) has invited you to view a ${resourceType} on Skybox Drive.
+    </p>
+
+    <div class="file-box">
+      <div class="file-name">📄 ${resourceName}</div>
+      <div class="file-meta">Permission: <strong>${role === "editor" ? "Editor (Can edit)" : "Viewer (Read only)"}</strong></div>
+      <div class="file-meta">Shared on: ${timestamp}</div>
+    </div>
+
+    <div style="text-align: center; margin: 28px 0;">
+      <a href="${shareUrl}" class="btn" target="_blank">View & Download Document</a>
+    </div>
+
+    <p style="font-size: 12px; color: #94a3b8; word-break: break-all;">
+      Or paste this secure link directly into your browser:<br>
+      <a href="${shareUrl}" style="color: #38bdf8;">${shareUrl}</a>
+    </p>
+
+    <div class="footer">
+      Skybox Drive Cloud Storage • Secure Document Collaboration<br>
+      Automated invitation sent on behalf of ${inviterEmail}
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
+    let previewUrl: string | undefined = undefined;
+
+    try {
+      const transporter = await this.getTransporter();
+      const info = await transporter.sendMail({
+        from: `"${inviterName} via Skybox Drive" <share@skybox.io>`,
+        to,
+        subject,
+        html: htmlContent
+      });
+
+      const etherealUrl = nodemailer.getTestMessageUrl(info);
+      if (etherealUrl) {
+        previewUrl = etherealUrl;
+        console.log(`✉️ [MailService] Sent share invitation to ${to}. Preview: ${previewUrl}`);
+      } else {
+        console.log(`✉️ [MailService] Sent share invitation to ${to} (MessageId: ${info.messageId})`);
+      }
+    } catch (err) {
+      console.warn("⚠️ [MailService] Failed to send via transport, saving notification to database:", err);
+    }
+
+    const notification = await SecurityNotification.create({
+      userId,
+      to,
+      subject,
+      htmlContent,
+      type: "share_invite",
+      previewUrl,
+      isRead: false,
+      metadata: {
+        inviterName,
+        inviterEmail,
+        resourceName,
+        resourceType,
+        timestamp
+      }
+    });
+
+    return notification;
+  }
 }
+

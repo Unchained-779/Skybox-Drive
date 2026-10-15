@@ -1,5 +1,12 @@
 # Skybox Drive — Cloud File Storage Backend & Web Application
 
+[![Live Deployed App](https://img.shields.io/badge/Live%20Deployment-skybox--drive.onrender.com-success?style=for-the-badge&logo=render)](https://skybox-drive.onrender.com)
+[![Swagger API Docs](https://img.shields.io/badge/API%20Documentation-Swagger%20UI-blue?style=for-the-badge&logo=swagger)](https://skybox-drive.onrender.com/api-docs)
+
+> 🌐 **Live Web Application**: [https://skybox-drive.onrender.com](https://skybox-drive.onrender.com)  
+> 📖 **Interactive Swagger Docs**: [https://skybox-drive.onrender.com/api-docs](https://skybox-drive.onrender.com/api-docs)  
+> 📦 **GitHub Repository**: [https://github.com/Unchained-779/Skybox-Drive](https://github.com/Unchained-779/Skybox-Drive)
+
 A production-grade, fault-tolerant cloud file storage application (Google Drive clone) built on the MERN stack (MongoDB, Express.js, React, Node.js) with strict TypeScript.
 
 Engineered with decoupled storage abstractions, atomic quota reservation, file versioning, Insecure Direct Object Reference (IDOR) immunity, and cycle-safe hierarchical folder trees.

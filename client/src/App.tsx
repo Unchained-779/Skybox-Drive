@@ -13,6 +13,7 @@ import { TrashView } from "./components/TrashView";
 import { AuthModal } from "./components/AuthModal";
 import { EmailViewerModal } from "./components/EmailViewerModal";
 import { NotificationModal } from "./components/NotificationModal";
+import { PublicShareView } from "./components/PublicShareView";
 import { api, getAuthToken, removeAuthToken } from "./api";
 import {
   User,
@@ -26,6 +27,15 @@ import {
 } from "./types";
 
 export const App: React.FC = () => {
+  // Check if current URL is a public share link
+  const path = window.location.pathname;
+  if (path.startsWith("/share/")) {
+    const token = path.replace("/share/", "").split("/")[0].trim();
+    if (token) {
+      return <PublicShareView token={token} />;
+    }
+  }
+
   const [user, setUser] = useState<User | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
 

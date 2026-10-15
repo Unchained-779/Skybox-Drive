@@ -280,6 +280,42 @@ export const api = {
     return handleResponse(res);
   },
 
+  async inviteByEmail(
+    resourceType: "file" | "folder",
+    resourceId: string,
+    recipientEmail: string,
+    role: "viewer" | "editor" = "viewer"
+  ): Promise<{ success: boolean; isExistingUser: boolean; shareUrl: string; token: string }> {
+    const res = await fetch(`${API_BASE}/shares/invite`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify({ resourceType, resourceId, recipientEmail, role })
+    });
+    return handleResponse(res);
+  },
+
+  async resolveShareLink(token: string): Promise<{
+    link: { token: string; role: string; accessCount: number; expiresAt: string | null; resourceType: "file" | "folder" };
+    resource: FileItem;
+  }> {
+    const res = await fetch(`${API_BASE}/shares/link/${token}`);
+    return handleResponse(res);
+  },
+
+  async downloadSharedFile(token: string, filename: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/shares/link/${token}/download`);
+    if (!res.ok) throw new Error("Failed to download shared file");
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  },
+
   async getSharedWithMe(): Promise<{ folders: FolderItem[]; files: FileItem[] }> {
     const res = await fetch(`${API_BASE}/shares/shared-with-me`, {
       headers: getHeaders()

@@ -10,6 +10,9 @@ import {
   ForbiddenError,
   BadRequestError
 } from "../utils/errors";
+import { MailService } from "./mail.service";
+import { storageService } from "./storage/LocalStorageProvider";
+import { ByteRange } from "../interfaces/IStorageProvider";
 
 export interface ShareResourceDTO {
   resourceType: "file" | "folder";
@@ -227,5 +230,143 @@ export class ShareService {
     ]);
 
     return { folders, files };
+  }
+
+  public static async inviteByEmail(params: {
+    resourceType: "file" | "folder";
+    resourceId: string;
+    recipientEmail: string;
+    role: "viewer" | "editor";
+    userId: Types.ObjectId;
+    origin?: string;
+  }) {
+    const targetEmail = params.recipientEmail.trim().toLowerCase();
+    const existingUser = await User.findOne({ email: targetEmail });
+
+    const inviter = await User.findById(params.userId);
+    if (!inviter) throw new NotFoundError("Inviter not found.");
+
+    let resourceName = "Document";
+    if (params.resourceType === "file") {
+      const file = await File.findOne({ _id: new Types.ObjectId(params.resourceId), isTrash: false });
+      if (!file) throw new NotFoundError("File not found.");
+      if (!file.ownerId.equals(params.userId)) {
+        throw new ForbiddenError("Only the owner can share this file.");
+      }
+      resourceName = file.name;
+    } else {
+      const folder = await Folder.findOne({ _id: new Types.ObjectId(params.resourceId), isTrash: false });
+      if (!folder) throw new NotFoundError("Folder not found.");
+      if (!folder.ownerId.equals(params.userId)) {
+        throw new ForbiddenError("Only the owner can share this folder.");
+      }
+      resourceName = folder.name;
+    }
+
+    // If recipient is already registered in Skybox Drive, link permission directly in DB
+    if (existingUser) {
+      try {
+        await this.shareResource({
+          resourceType: params.resourceType,
+          resourceId: params.resourceId,
+          targetEmail,
+          role: params.role,
+          userId: params.userId
+        });
+      } catch {
+        // Continue to send email invite even if direct link already exists
+      }
+    }
+
+    // Generate public share link
+    const link = await this.createShareLink({
+      resourceType: params.resourceType,
+      resourceId: params.resourceId,
+      role: params.role,
+      userId: params.userId
+    });
+
+    const baseOrigin = params.origin || "https://skybox-drive.onrender.com";
+    const shareUrl = `${baseOrigin}/share/${link.token}`;
+
+    const notification = await MailService.sendShareInvitationEmail({
+      userId: params.userId,
+      to: targetEmail,
+      inviterName: inviter.name,
+      inviterEmail: inviter.email,
+      resourceName,
+      resourceType: params.resourceType,
+      role: params.role,
+      shareUrl
+    });
+
+    return {
+      success: true,
+      isExistingUser: !!existingUser,
+      shareUrl,
+      token: link.token,
+      notification
+    };
+  }
+
+  public static async getSharedFileDownloadStream(params: {
+    token: string;
+    rangeHeader?: string;
+    ipAddress?: string;
+  }) {
+    const link = await ShareLink.findOne({ token: params.token });
+    if (!link) throw new NotFoundError("Share link does not exist or has expired.");
+
+    if (link.expiresAt && link.expiresAt < new Date()) {
+      throw new ForbiddenError("This share link has expired.");
+    }
+
+    if (link.resourceType !== "file") {
+      throw new BadRequestError("Direct stream download is only supported for files.");
+    }
+
+    const file = await File.findOne({ _id: link.resourceId, isTrash: false });
+    if (!file) throw new NotFoundError("The requested file no longer exists.");
+
+    const size = file.size;
+    let range: ByteRange | undefined = undefined;
+    let statusCode = 200;
+
+    if (params.rangeHeader) {
+      const parts = params.rangeHeader.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : size - 1;
+
+      if (!isNaN(start) && start < size) {
+        range = {
+          start,
+          end: Math.min(end, size - 1)
+        };
+        statusCode = 206;
+      }
+    }
+
+    const stream = await storageService.getFileStream(file.storageKey, range);
+
+    link.accessCount += 1;
+    await link.save();
+
+    await AuditLog.create({
+      userId: file.ownerId,
+      action: "DOWNLOAD_SHARED_FILE",
+      resourceType: "file",
+      resourceId: file._id,
+      details: { token: params.token },
+      ipAddress: params.ipAddress
+    });
+
+    return {
+      stream,
+      filename: file.name,
+      mimeType: file.mimeType,
+      size,
+      range,
+      statusCode
+    };
   }
 }

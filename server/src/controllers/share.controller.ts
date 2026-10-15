@@ -29,6 +29,16 @@ export const createShareLinkSchema = z.object({
   })
 });
 
+export const inviteShareSchema = z.object({
+  body: z.object({
+    resourceType: z.enum(["file", "folder"]),
+    resourceId: z.string(),
+    recipientEmail: z.string().email(),
+    role: z.enum(["viewer", "editor"]).default("viewer"),
+    origin: z.string().optional()
+  })
+});
+
 export class ShareController {
   public static async share(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -135,6 +145,70 @@ export class ShareController {
         success: true,
         data: result
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public static async invite(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, message: "Unauthorized" });
+        return;
+      }
+
+      const origin = req.headers.origin || `${req.protocol}://${req.get("host")}`;
+
+      const result = await ShareService.inviteByEmail({
+        resourceType: req.body.resourceType,
+        resourceId: req.body.resourceId,
+        recipientEmail: req.body.recipientEmail,
+        role: req.body.role,
+        userId: req.user._id,
+        origin
+      });
+
+      res.status(200).json({
+        success: true,
+        message: `Invitation email sent to ${req.body.recipientEmail}`,
+        data: result
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public static async downloadShared(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { token } = req.params;
+      const rangeHeader = req.headers.range;
+
+      const downloadData = await ShareService.getSharedFileDownloadStream({
+        token,
+        rangeHeader,
+        ipAddress: req.ip
+      });
+
+      res.setHeader("Content-Type", downloadData.mimeType);
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${encodeURIComponent(downloadData.filename)}"`
+      );
+
+      if (downloadData.range) {
+        res.status(downloadData.statusCode);
+        res.setHeader("Accept-Ranges", "bytes");
+        res.setHeader(
+          "Content-Range",
+          `bytes ${downloadData.range.start}-${downloadData.range.end}/${downloadData.size}`
+        );
+        res.setHeader("Content-Length", downloadData.range.end - downloadData.range.start + 1);
+      } else {
+        res.status(200);
+        res.setHeader("Content-Length", downloadData.size);
+      }
+
+      downloadData.stream.pipe(res);
     } catch (error) {
       next(error);
     }
