@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Cloud, LogIn, UserPlus, Users, ArrowRight } from "lucide-react";
+import { Cloud, LogIn, UserPlus, Shield, ArrowRight, Sparkles } from "lucide-react";
 import { api, setAuthToken } from "../api";
 import { AuthSuccessResult, UserProfileSummary } from "../types";
 import { GoogleAccountChooserModal } from "./GoogleAccountChooserModal";
@@ -30,9 +30,10 @@ const GoogleIcon = () => (
 );
 
 export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
-  const [tab, setTab] = useState<"profiles" | "login" | "register">("profiles");
-  const [profiles, setProfiles] = useState<UserProfileSummary[]>([]);
-  const [profilesLoading, setProfilesLoading] = useState(true);
+  // Default to standard "login" tab — never leak personal accounts!
+  const [tab, setTab] = useState<"login" | "register" | "demo">("login");
+  const [demoProfiles, setDemoProfiles] = useState<UserProfileSummary[]>([]);
+  const [demoLoading, setDemoLoading] = useState(false);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,15 +42,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch all registered / active accounts for the front page
-  const loadProfiles = useCallback(async () => {
+  // Fetch only official pre-seeded demo evaluator accounts
+  const loadDemoProfiles = useCallback(async () => {
     try {
-      setProfilesLoading(true);
+      setDemoLoading(true);
       const list = await api.getPublicProfiles();
-      setProfiles(list);
+      // Strictly filter to official demo accounts as defense-in-depth
+      const filtered = list.filter(
+        (p) => p.email === "vivek@skybox.io" || p.email === "ravi@skybox.io"
+      );
+      setDemoProfiles(filtered.length > 0 ? filtered : [
+        {
+          id: "demo-1",
+          name: "Vivek Chandra",
+          email: "vivek@skybox.io",
+          authProvider: "local",
+          storageQuota: 104857600,
+          usedStorage: 0,
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: "demo-2",
+          name: "Ravi Chandra",
+          email: "ravi@skybox.io",
+          authProvider: "local",
+          storageQuota: 104857600,
+          usedStorage: 0,
+          createdAt: new Date().toISOString()
+        }
+      ]);
     } catch {
-      // Fallback default list if backend is initializing
-      setProfiles([
+      setDemoProfiles([
         {
           id: "demo-1",
           name: "Vivek Chandra",
@@ -70,13 +93,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
         }
       ]);
     } finally {
-      setProfilesLoading(false);
+      setDemoLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadProfiles();
-  }, [loadProfiles]);
+    loadDemoProfiles();
+  }, [loadDemoProfiles]);
 
   // Initialize native Google Identity Services if client ID is configured
   useEffect(() => {
@@ -100,7 +123,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
       const res = await api.loginWithGoogle(credential);
       setAuthToken(res.token);
       onSuccess(res);
-      loadProfiles();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Google authentication failed");
     } finally {
@@ -113,23 +135,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
     if (clientId && window.google?.accounts?.id) {
       window.google.accounts.id.prompt();
     }
-    // Always open modern Google Account Chooser & Permissions dialog
     setShowGoogleChooser(true);
   };
 
-  // 1-Click quick login for any registered profile on the front page
-  const handleProfileClick = async (profile: UserProfileSummary) => {
+  // 1-Click quick login strictly for pre-seeded demo evaluator accounts
+  const handleQuickDemoLogin = async (demoEmail: string, demoName: string) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.quickLogin(profile.email);
+      const res = await api.quickLogin(demoEmail);
       setAuthToken(res.token);
       onSuccess(res);
     } catch (err: unknown) {
       setError(
         err instanceof Error
           ? err.message
-          : `Failed to login as ${profile.name}.`
+          : `Failed to login as ${demoName}.`
       );
     } finally {
       setLoading(false);
@@ -145,12 +166,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
         const res = await api.login(email, password);
         setAuthToken(res.token);
         onSuccess(res);
-        loadProfiles();
       } else {
         const res = await api.register(name, email, password);
         setAuthToken(res.token);
         onSuccess(res);
-        loadProfiles();
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Authentication failed");
@@ -162,7 +181,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
   return (
     <>
       <div className="modal-overlay">
-        <div className="modal-content" style={{ maxWidth: "480px", maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
+        <div
+          className="modal-content"
+          style={{ maxWidth: "460px", maxHeight: "90vh", display: "flex", flexDirection: "column" }}
+        >
           {/* Brand Header */}
           <div style={{ textAlign: "center", marginBottom: "18px", flexShrink: 0 }}>
             <div
@@ -207,8 +229,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
                 fontWeight: 600,
                 border: "none",
                 borderRadius: "var(--radius-sm)",
-                backgroundColor: tab === "profiles" ? "var(--accent-blue)" : "transparent",
-                color: tab === "profiles" ? "#ffffff" : "var(--text-secondary)",
+                backgroundColor: tab === "login" ? "var(--accent-blue)" : "transparent",
+                color: tab === "login" ? "#ffffff" : "var(--text-secondary)",
                 cursor: "pointer",
                 transition: "all 0.2s",
                 display: "flex",
@@ -216,26 +238,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
                 justifyContent: "center",
                 gap: "6px"
               }}
-              onClick={() => setTab("profiles")}
-            >
-              <Users size={14} />
-              Profiles ({profiles.length})
-            </button>
-            <button
-              style={{
-                flex: 1,
-                padding: "8px",
-                fontSize: "13px",
-                fontWeight: 600,
-                border: "none",
-                borderRadius: "var(--radius-sm)",
-                backgroundColor: tab === "login" ? "var(--accent-blue)" : "transparent",
-                color: tab === "login" ? "#ffffff" : "var(--text-secondary)",
-                cursor: "pointer",
-                transition: "all 0.2s"
+              onClick={() => {
+                setTab("login");
+                setError(null);
               }}
-              onClick={() => setTab("login")}
             >
+              <LogIn size={14} />
               Log In
             </button>
             <button
@@ -249,11 +257,44 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
                 backgroundColor: tab === "register" ? "var(--accent-blue)" : "transparent",
                 color: tab === "register" ? "#ffffff" : "var(--text-secondary)",
                 cursor: "pointer",
-                transition: "all 0.2s"
+                transition: "all 0.2s",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "6px"
               }}
-              onClick={() => setTab("register")}
+              onClick={() => {
+                setTab("register");
+                setError(null);
+              }}
             >
+              <UserPlus size={14} />
               Sign Up
+            </button>
+            <button
+              style={{
+                flex: 1,
+                padding: "8px",
+                fontSize: "13px",
+                fontWeight: 600,
+                border: "none",
+                borderRadius: "var(--radius-sm)",
+                backgroundColor: tab === "demo" ? "var(--accent-blue)" : "transparent",
+                color: tab === "demo" ? "#ffffff" : "var(--text-secondary)",
+                cursor: "pointer",
+                transition: "all 0.2s",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "6px"
+              }}
+              onClick={() => {
+                setTab("demo");
+                setError(null);
+              }}
+            >
+              <Sparkles size={14} />
+              Demo (2)
             </button>
           </div>
 
@@ -273,159 +314,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
             </div>
           )}
 
-          {/* FRONT PAGE: ALL REGISTERED & LOGGED-IN PROFILES */}
-          {tab === "profiles" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px", overflowY: "auto", paddingRight: "4px" }}>
-              <div
-                style={{
-                  padding: "10px 12px",
-                  backgroundColor: "rgba(59, 130, 246, 0.1)",
-                  borderRadius: "var(--radius-sm)",
-                  border: "1px solid rgba(59, 130, 246, 0.2)",
-                  fontSize: "12px",
-                  color: "#93c5fd"
-                }}
-              >
-                Instant Access: All registered accounts appear below. Click any profile to enter their drive workspace immediately.
-              </div>
-
-              {/* Google Account Chooser Action Button */}
-              <button
-                onClick={handleGoogleClick}
-                className="btn btn-secondary"
-                style={{
-                  padding: "12px 14px",
-                  justifyContent: "space-between",
-                  borderColor: "rgba(66, 133, 244, 0.4)",
-                  backgroundColor: "rgba(66, 133, 244, 0.08)"
-                }}
-                disabled={loading}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <GoogleIcon />
-                  <div style={{ textAlign: "left" }}>
-                    <p style={{ fontSize: "13px", fontWeight: 600, color: "#93c5fd" }}>
-                      Continue with Google (Account Chooser)
-                    </p>
-                    <p style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-                      Choose or switch any Google account with OAuth 2.0
-                    </p>
-                  </div>
-                </div>
-                <span className="badge" style={{ backgroundColor: "#4285F4", color: "#ffffff", fontSize: "10px" }}>
-                  OAuth 2.0
-                </span>
-              </button>
-
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
-                <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
-                  Registered Profiles ({profiles.length})
-                </span>
-                <div style={{ flex: 1, height: "1px", backgroundColor: "var(--border-color)" }} />
-              </div>
-
-              {/* Dynamic Profiles List */}
-              {profilesLoading ? (
-                <div style={{ textAlign: "center", padding: "20px", color: "var(--text-muted)", fontSize: "13px" }}>
-                  Loading registered profiles...
-                </div>
-              ) : profiles.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "20px", color: "var(--text-muted)", fontSize: "13px" }}>
-                  No accounts registered yet. Use Sign Up or Google to create one.
-                </div>
-              ) : (
-                profiles.map((p) => {
-                  const isOwner = p.email === "vivek@skybox.io";
-                  const isEditor = p.email === "ravi@skybox.io";
-                  const isGoogle = p.authProvider === "google";
-
-                  return (
-                    <button
-                      key={p.id}
-                      onClick={() => handleProfileClick(p)}
-                      className="btn btn-secondary"
-                      style={{
-                        padding: "12px 14px",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        textAlign: "left",
-                        width: "100%",
-                        backgroundColor: "rgba(255, 255, 255, 0.03)",
-                        borderColor: isOwner
-                          ? "rgba(59, 130, 246, 0.4)"
-                          : isGoogle
-                          ? "rgba(66, 133, 244, 0.35)"
-                          : "rgba(255, 255, 255, 0.1)",
-                        transition: "all 0.15s ease"
-                      }}
-                      disabled={loading}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                        {p.avatar ? (
-                          <img
-                            src={p.avatar}
-                            alt={p.name}
-                            style={{
-                              width: "36px",
-                              height: "36px",
-                              borderRadius: "50%",
-                              objectFit: "cover",
-                              border: "2px solid rgba(59, 130, 246, 0.4)"
-                            }}
-                          />
-                        ) : (
-                          <div
-                            style={{
-                              width: "36px",
-                              height: "36px",
-                              borderRadius: "50%",
-                              backgroundColor: isOwner ? "var(--accent-blue)" : "var(--bg-hover)",
-                              color: "#ffffff",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              fontWeight: 700,
-                              fontSize: "14px"
-                            }}
-                          >
-                            {p.name.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            <p style={{ fontSize: "14px", fontWeight: 600, color: "#f8fafc" }}>{p.name}</p>
-                            {isGoogle && <GoogleIcon />}
-                          </div>
-                          <p style={{ fontSize: "12px", color: "var(--text-muted)" }}>{p.email}</p>
-                        </div>
-                      </div>
-
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        {isOwner ? (
-                          <span className="badge badge-blue">Owner</span>
-                        ) : isEditor ? (
-                          <span className="badge badge-green">Editor</span>
-                        ) : isGoogle ? (
-                          <span className="badge" style={{ backgroundColor: "rgba(66, 133, 244, 0.2)", color: "#93c5fd" }}>
-                            Google
-                          </span>
-                        ) : (
-                          <span className="badge" style={{ backgroundColor: "rgba(255, 255, 255, 0.08)", color: "#cbd5e1" }}>
-                            Member
-                          </span>
-                        )}
-                        <ArrowRight size={14} color="var(--text-muted)" />
-                      </div>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          )}
-
-          {/* Standard Login / Register Form */}
-          {tab !== "profiles" && (
-            <div>
+          {/* TAB 1: STANDARD LOG IN (DEFAULT) */}
+          {tab === "login" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
               {/* Google OAuth Button */}
               <button
                 type="button"
@@ -440,49 +331,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
                   backgroundColor: "rgba(255, 255, 255, 0.05)",
                   borderColor: "rgba(255, 255, 255, 0.15)",
                   fontWeight: 600,
-                  fontSize: "14px",
-                  marginBottom: "16px"
+                  fontSize: "14px"
                 }}
               >
                 <GoogleIcon />
-                {tab === "login" ? "Sign in with Google" : "Sign up with Google"}
+                Sign in with Google
               </button>
 
               {/* Divider */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  margin: "16px 0",
-                  gap: "12px"
-                }}
-              >
+              <div style={{ display: "flex", alignItems: "center", margin: "2px 0", gap: "12px" }}>
                 <div style={{ flex: 1, height: "1px", backgroundColor: "var(--border-color)" }} />
-                <span style={{ fontSize: "12px", color: "var(--text-muted)", textTransform: "uppercase" }}>
+                <span style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase" }}>
                   or with email
                 </span>
                 <div style={{ flex: 1, height: "1px", backgroundColor: "var(--border-color)" }} />
               </div>
 
-              <form onSubmit={handleCustomSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                {tab === "register" && (
-                  <div>
-                    <label style={{ display: "block", fontSize: "12px", color: "var(--text-secondary)", marginBottom: "6px" }}>
-                      Full Name
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Vivek Chandra"
-                      className="input-field"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      required
-                    />
-                  </div>
-                )}
-
+              {/* Email + Password Form */}
+              <form onSubmit={handleCustomSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 <div>
-                  <label style={{ display: "block", fontSize: "12px", color: "var(--text-secondary)", marginBottom: "6px" }}>
+                  <label style={{ display: "block", fontSize: "12px", color: "var(--text-secondary)", marginBottom: "4px" }}>
                     Email Address
                   </label>
                   <input
@@ -496,7 +364,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: "12px", color: "var(--text-secondary)", marginBottom: "6px" }}>
+                  <label style={{ display: "block", fontSize: "12px", color: "var(--text-secondary)", marginBottom: "4px" }}>
                     Password
                   </label>
                   <input
@@ -512,13 +380,298 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
                 <button
                   type="submit"
                   className="btn btn-primary"
-                  style={{ marginTop: "10px", justifyContent: "center" }}
+                  style={{ marginTop: "4px", justifyContent: "center" }}
                   disabled={loading}
                 >
-                  {tab === "login" ? <LogIn size={16} /> : <UserPlus size={16} />}
-                  {loading ? "Processing..." : tab === "login" ? "Sign In" : "Create Account"}
+                  <LogIn size={16} />
+                  {loading ? "Signing In..." : "Sign In"}
                 </button>
               </form>
+
+              {/* Evaluator Quick Access Footer */}
+              <div
+                style={{
+                  marginTop: "8px",
+                  padding: "12px",
+                  background: "linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(99, 102, 241, 0.04))",
+                  border: "1px dashed rgba(59, 130, 246, 0.3)",
+                  borderRadius: "var(--radius-md)"
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#93c5fd", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    ⚡ Evaluator Quick-Access
+                  </span>
+                  <span className="badge badge-blue" style={{ fontSize: "10px" }}>1-Click Demo</span>
+                </div>
+                <p style={{ fontSize: "11px", color: "var(--text-muted)", marginBottom: "8px" }}>
+                  Grading or testing the app? Instant login to pre-configured sandbox accounts:
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDemoLogin("vivek@skybox.io", "Vivek Chandra")}
+                    className="btn btn-secondary"
+                    style={{
+                      padding: "8px 10px",
+                      fontSize: "12px",
+                      justifyContent: "center",
+                      borderColor: "rgba(59, 130, 246, 0.4)",
+                      backgroundColor: "rgba(59, 130, 246, 0.1)"
+                    }}
+                    disabled={loading}
+                  >
+                    Vivek (Owner)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDemoLogin("ravi@skybox.io", "Ravi Chandra")}
+                    className="btn btn-secondary"
+                    style={{
+                      padding: "8px 10px",
+                      fontSize: "12px",
+                      justifyContent: "center",
+                      borderColor: "rgba(16, 185, 129, 0.4)",
+                      backgroundColor: "rgba(16, 185, 129, 0.1)"
+                    }}
+                    disabled={loading}
+                  >
+                    Ravi (Editor)
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ textAlign: "center", marginTop: "4px" }}>
+                <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>Don't have an account? </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTab("register");
+                    setError(null);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--accent-blue)",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    textDecoration: "underline"
+                  }}
+                >
+                  Create one now
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: SIGN UP */}
+          {tab === "register" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              <button
+                type="button"
+                onClick={handleGoogleClick}
+                className="btn btn-secondary"
+                disabled={loading}
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  justifyContent: "center",
+                  gap: "10px",
+                  backgroundColor: "rgba(255, 255, 255, 0.05)",
+                  borderColor: "rgba(255, 255, 255, 0.15)",
+                  fontWeight: 600,
+                  fontSize: "14px"
+                }}
+              >
+                <GoogleIcon />
+                Sign up with Google
+              </button>
+
+              <div style={{ display: "flex", alignItems: "center", margin: "2px 0", gap: "12px" }}>
+                <div style={{ flex: 1, height: "1px", backgroundColor: "var(--border-color)" }} />
+                <span style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase" }}>
+                  or with email
+                </span>
+                <div style={{ flex: 1, height: "1px", backgroundColor: "var(--border-color)" }} />
+              </div>
+
+              <form onSubmit={handleCustomSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", color: "var(--text-secondary)", marginBottom: "4px" }}>
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Vivek Chandra"
+                    className="input-field"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", color: "var(--text-secondary)", marginBottom: "4px" }}>
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="you@domain.com"
+                    className="input-field"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", color: "var(--text-secondary)", marginBottom: "4px" }}>
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    className="input-field"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{ marginTop: "4px", justifyContent: "center" }}
+                  disabled={loading}
+                >
+                  <UserPlus size={16} />
+                  {loading ? "Creating Account..." : "Create Account"}
+                </button>
+              </form>
+
+              <div style={{ textAlign: "center", marginTop: "4px" }}>
+                <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>Already have an account? </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTab("login");
+                    setError(null);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--accent-blue)",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    textDecoration: "underline"
+                  }}
+                >
+                  Sign in
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: DEMO EVALUATOR ACCOUNTS */}
+          {tab === "demo" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div
+                style={{
+                  padding: "10px 12px",
+                  backgroundColor: "rgba(59, 130, 246, 0.1)",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1px solid rgba(59, 130, 246, 0.25)",
+                  fontSize: "12px",
+                  color: "#93c5fd",
+                  lineHeight: "1.5"
+                }}
+              >
+                <strong>Hiring &amp; Evaluation Sandbox:</strong> These 2 accounts are pre-seeded with sample folders, documents, images, and mock storage usage. Click either account to enter instantly with zero password required.
+              </div>
+
+              {demoLoading ? (
+                <div style={{ textAlign: "center", padding: "20px", color: "var(--text-muted)", fontSize: "13px" }}>
+                  Loading demo accounts...
+                </div>
+              ) : (
+                demoProfiles.map((p) => {
+                  const isOwner = p.email === "vivek@skybox.io";
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => handleQuickDemoLogin(p.email, p.name)}
+                      className="btn btn-secondary"
+                      style={{
+                        padding: "12px 14px",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        textAlign: "left",
+                        width: "100%",
+                        backgroundColor: "rgba(255, 255, 255, 0.03)",
+                        borderColor: isOwner
+                          ? "rgba(59, 130, 246, 0.4)"
+                          : "rgba(16, 185, 129, 0.3)",
+                        transition: "all 0.15s ease"
+                      }}
+                      disabled={loading}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <div
+                          style={{
+                            width: "36px",
+                            height: "36px",
+                            borderRadius: "50%",
+                            backgroundColor: isOwner ? "var(--accent-blue)" : "rgba(16, 185, 129, 0.2)",
+                            color: isOwner ? "#ffffff" : "#34d399",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontWeight: 700,
+                            fontSize: "14px"
+                          }}
+                        >
+                          {p.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <p style={{ fontSize: "14px", fontWeight: 600, color: "#f8fafc" }}>{p.name}</p>
+                          </div>
+                          <p style={{ fontSize: "12px", color: "var(--text-muted)" }}>{p.email}</p>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        {isOwner ? (
+                          <span className="badge badge-blue">Owner / Admin</span>
+                        ) : (
+                          <span className="badge badge-green">Collaborator</span>
+                        )}
+                        <ArrowRight size={14} color="var(--text-muted)" />
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "10px",
+                  borderRadius: "var(--radius-sm)",
+                  backgroundColor: "rgba(255, 255, 255, 0.02)",
+                  border: "1px solid rgba(255, 255, 255, 0.05)",
+                  marginTop: "6px"
+                }}
+              >
+                <Shield size={16} color="var(--accent-blue)" style={{ flexShrink: 0 }} />
+                <p style={{ fontSize: "11px", color: "var(--text-muted)", lineHeight: "1.4" }}>
+                  <strong>Strict Privacy Isolation:</strong> All registered personal accounts and private files are strictly isolated. Demo accounts only exist to demonstrate full platform capabilities to evaluators.
+                </p>
+              </div>
             </div>
           )}
         </div>
@@ -527,11 +680,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
       {/* Modern Google Account Chooser & Permissions Consent Dialog */}
       <GoogleAccountChooserModal
         isOpen={showGoogleChooser}
-        registeredGoogleAccounts={profiles.filter((p) => p.authProvider === "google")}
         onClose={() => setShowGoogleChooser(false)}
         onSuccess={(res) => {
           onSuccess(res);
-          loadProfiles();
+          loadDemoProfiles();
         }}
       />
     </>

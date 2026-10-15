@@ -3,7 +3,7 @@ import { OAuth2Client } from "google-auth-library";
 import { User, IUser } from "../models/User.model";
 import { AuditLog } from "../models/AuditLog.model";
 import { env } from "../config/env";
-import { ConflictError, UnauthorizedError, NotFoundError } from "../utils/errors";
+import { ConflictError, UnauthorizedError, NotFoundError, ForbiddenError } from "../utils/errors";
 import { MailService } from "./mail.service";
 
 export interface RegisterDTO {
@@ -342,10 +342,31 @@ export class AuthService {
     usedStorage: number;
     createdAt: Date;
   }>> {
-    const users = await User.find({})
+    // SECURITY: Strictly isolate to pre-seeded demo evaluator accounts.
+    // Never leak registered users or personal Google accounts!
+    const DEMO_EMAILS = ["vivek@skybox.io", "ravi@skybox.io"];
+    let users = await User.find({ email: { $in: DEMO_EMAILS } })
       .select("_id name email avatar authProvider storageQuota usedStorage createdAt")
-      .sort({ createdAt: -1 })
-      .limit(20);
+      .lean();
+
+    if (users.length < 2) {
+      for (const email of DEMO_EMAILS) {
+        const exists = users.some((u) => u.email.toLowerCase() === email.toLowerCase());
+        if (!exists) {
+          const isVivek = email === "vivek@skybox.io";
+          await User.create({
+            name: isVivek ? "Vivek Chandra" : "Ravi Chandra",
+            email,
+            password: "password123",
+            storageQuota: 104857600,
+            usedStorage: 0
+          });
+        }
+      }
+      users = await User.find({ email: { $in: DEMO_EMAILS } })
+        .select("_id name email avatar authProvider storageQuota usedStorage createdAt")
+        .lean();
+    }
 
     return users.map((u) => ({
       id: u._id.toString(),
@@ -360,9 +381,26 @@ export class AuthService {
   }
 
   public static async quickLogin(email: string, ipAddress?: string): Promise<AuthResponse> {
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const DEMO_EMAILS = ["vivek@skybox.io", "ravi@skybox.io"];
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // SECURITY: Strictly restrict quick login to pre-seeded demo evaluator accounts!
+    if (!DEMO_EMAILS.includes(normalizedEmail)) {
+      throw new ForbiddenError(
+        "Quick login is only permitted for pre-seeded demo accounts (vivek@skybox.io / ravi@skybox.io). Please log in with your password or Google OAuth."
+      );
+    }
+
+    let user = await User.findOne({ email: normalizedEmail });
     if (!user) {
-      throw new NotFoundError("User profile not found.");
+      const isVivek = normalizedEmail === "vivek@skybox.io";
+      user = await User.create({
+        name: isVivek ? "Vivek Chandra" : "Ravi Chandra",
+        email: normalizedEmail,
+        password: "password123",
+        storageQuota: 104857600,
+        usedStorage: 0
+      });
     }
 
     const token = this.generateToken(user);

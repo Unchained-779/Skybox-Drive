@@ -5,7 +5,6 @@ import { AuthSuccessResult } from "../types";
 
 interface GoogleAccountChooserModalProps {
   isOpen: boolean;
-  registeredGoogleAccounts?: Array<{ name: string; email: string; avatar?: string }>;
   onClose: () => void;
   onSuccess: (result: AuthSuccessResult) => void;
 }
@@ -52,7 +51,6 @@ const GoogleLogo = () => (
 
 export const GoogleAccountChooserModal: React.FC<GoogleAccountChooserModalProps> = ({
   isOpen,
-  registeredGoogleAccounts = [],
   onClose,
   onSuccess
 }) => {
@@ -63,21 +61,21 @@ export const GoogleAccountChooserModal: React.FC<GoogleAccountChooserModalProps>
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Merge default accounts with dynamically registered Google accounts
+  // SECURITY: Only show accounts saved on THIS browser device + default demo accounts.
+  // Never leak accounts across other users' machines!
   const displayedAccounts = React.useMemo(() => {
+    let localSaved: MockAccount[] = [];
+    try {
+      const stored = localStorage.getItem("skybox_device_google_accounts");
+      if (stored) localSaved = JSON.parse(stored);
+    } catch {
+      // Ignore
+    }
     const map = new Map<string, MockAccount>();
     DEFAULT_ACCOUNTS.forEach((a) => map.set(a.email.toLowerCase(), a));
-    registeredGoogleAccounts.forEach((a) => {
-      map.set(a.email.toLowerCase(), {
-        name: a.name,
-        email: a.email.toLowerCase(),
-        avatar:
-          a.avatar ||
-          `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(a.name)}&backgroundColor=1a73e8`
-      });
-    });
+    localSaved.forEach((a) => map.set(a.email.toLowerCase(), a));
     return Array.from(map.values());
-  }, [registeredGoogleAccounts]);
+  }, [step]);
 
   if (!isOpen) return null;
 
@@ -129,6 +127,16 @@ export const GoogleAccountChooserModal: React.FC<GoogleAccountChooserModalProps>
       );
       const res = await api.loginWithGoogle(token);
       setAuthToken(res.token);
+      try {
+        const stored = localStorage.getItem("skybox_device_google_accounts");
+        const list: MockAccount[] = stored ? JSON.parse(stored) : [];
+        if (!list.some((a) => a.email.toLowerCase() === selectedAccount.email.toLowerCase())) {
+          list.push(selectedAccount);
+          localStorage.setItem("skybox_device_google_accounts", JSON.stringify(list));
+        }
+      } catch {
+        // Ignore
+      }
       onSuccess(res);
       onClose();
     } catch (err: unknown) {
